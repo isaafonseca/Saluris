@@ -1,0 +1,66 @@
+spring:
+  application:
+    name: saluris-ia
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/Saluris}
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+  jpa:
+    hibernate:
+      # O schema é gerenciado pelos scripts em /database (01_schema.sql). O Hibernate nunca altera o banco.
+      ddl-auto: none
+    # IMPORTANTE: manter true. O EntityManager da requisição é vinculado pelo OSIV e é nele que o
+    # filtro de tenant (TenantFilterAspect) é habilitado. Sem EntityManager vinculado o acesso a
+    # repositórios falha de forma segura (fail-closed).
+    open-in-view: true
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+  servlet:
+    multipart:
+      max-file-size: 20MB
+      max-request-size: 21MB
+  mail:
+    host: ${SMTP_HOST:}
+    port: ${SMTP_PORT:587}
+    username: ${SMTP_USER:}
+    password: ${SMTP_PASS:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+  mvc:
+    problemdetails:
+      enabled: true
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: 8080
+  error:
+    include-message: never
+    include-stacktrace: never
+
+saluris:
+  security:
+    jwt:
+      # Base64 de, no mínimo, 32 bytes aleatórios. OBRIGATÓRIO (sem valor padrão por segurança).
+      secret: ${SALURIS_JWT_SECRET:}
+      expiracao-minutos: ${SALURIS_JWT_EXPIRACAO_MINUTOS:480}
+    cors-origens: ${SALURIS_CORS_ORIGENS:http://localhost:5173,http://127.0.0.1:5173,http://localhost:5174,http://127.0.0.1:5174}
+  # Cria o primeiro ADMINISTRADOR (T.I.) se ainda não existir nenhum.
+  bootstrap-admin:
+    nome: ${SALURIS_ADMIN_NOME:Administrador}
+    email: ${SALURIS_ADMIN_EMAIL:}
+    senha: ${SALURIS_ADMIN_SENHA:}
+  db:
+    auto-init: ${SALURIS_DB_AUTO_INIT:true}
+  storage:
+    dir: ${SALURIS_STORAGE_DIR:${user.home}/.saluris/arquivos}
+  ia:
+    api-key: ${OPENAI_API_KEY:}
+    modelo: ${OPENAI_MODEL:gpt-4o-mini}
+    base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}

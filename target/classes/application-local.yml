@@ -1,0 +1,8 @@
+saluris:
+  security:
+    jwt:
+      secret: ${SALURIS_JWT_SECRET:U2FsdXJpc0lhQ2hhdmVMb2NhbERlRGVzZW52b2x2aW1lbnRvMzJCeXRlczE=}
+  bootstrap-admin:
+    nome: ${SALURIS_ADMIN_NOME:Administrador T.I.}
+    email: ${SALURIS_ADMIN_EMAIL:admin@saluris.com.br}
+    senha: ${SALURIS_ADMIN_SENHA:Saluris@2026!}
