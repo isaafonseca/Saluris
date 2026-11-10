@@ -1,9 +1,1 @@
-target/
-node_modules/
-dist/
-.idea/
-.vscode/
-*.iml
-*.log
-.env
-uploads/
+
