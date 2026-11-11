@@ -35,7 +35,7 @@ import {
 } from '../components/ui/Common';
 
 const CHART_COLORS = {
-  EM_DIA: '#16a34a',
+  EM_DIA: '#111827',
   PROXIMO: '#d97706',
   VENCIDO: '#dc2626',
 };
