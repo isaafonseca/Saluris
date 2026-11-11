@@ -21,7 +21,11 @@ import { AdminEmpresaSelector } from '../components/ui/AdminEmpresaSelector';
 import { Table } from '../components/ui/Table';
 import { Modal } from '../components/ui/Modal';
 import { Badge, LaudoStatusBadge } from '../components/ui/Badge';
-import { FormField, EmptyState } from '../components/ui/Common';
+import {
+  ClearFiltersButton,
+  FormField,
+  EmptyState,
+} from '../components/ui/Common';
 
 export function LaudosPage() {
   const { isAdmin, isEspecialista } = useAuth();
@@ -305,6 +309,10 @@ export function LaudosPage() {
             </select>
           </div>
         </div>
+        <ClearFiltersButton
+          active={Boolean(statusFiltro)}
+          onClick={() => setStatusFiltro('')}
+        />
       </div>
 
       <div className="card">

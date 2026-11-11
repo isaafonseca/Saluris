@@ -136,7 +136,7 @@ export default function App() {
           <Route
             path="/estrutura"
             element={
-              <ProtectedRoute allowedRoles={['ESPECIALISTA_SST', 'RH_EMPRESA', 'ADMINISTRADOR']}>
+              <ProtectedRoute allowedRoles={['RH_EMPRESA', 'ADMINISTRADOR']}>
                 <EstruturaPage />
               </ProtectedRoute>
             }

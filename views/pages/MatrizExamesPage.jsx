@@ -16,7 +16,13 @@ import { formatDateTime } from '../utils/formatters';
 import { AdminEmpresaSelector } from '../components/ui/AdminEmpresaSelector';
 import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
-import { FormField, Loading, EmptyState, ConfirmDialog } from '../components/ui/Common';
+import {
+  ClearFiltersButton,
+  FormField,
+  Loading,
+  EmptyState,
+  ConfirmDialog,
+} from '../components/ui/Common';
 
 export function MatrizExamesPage() {
   const { isAdmin, isEspecialista } = useAuth();
@@ -31,8 +37,8 @@ export function MatrizExamesPage() {
   const [tiposExame, setTiposExame] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const [filtroFuncaoId, setFiltroFuncaoId] = useState('');
-  const [filtroSetorId, setFiltroSetorId] = useState('');
+  const [filtroFuncaoIds, setFiltroFuncaoIds] = useState([]);
+  const [filtroSetorIds, setFiltroSetorIds] = useState([]);
 
   // Modal Criar / Editar
   const [modalOpen, setModalOpen] = useState(false);
@@ -80,8 +86,6 @@ export function MatrizExamesPage() {
     try {
       const data = await api.get('/matriz-exames', {
         empresaId: isAdmin && activeEmpresaId ? activeEmpresaId : undefined,
-        funcaoId: filtroFuncaoId || undefined,
-        setorId: filtroSetorId || undefined,
       });
       setMatriz(Array.isArray(data) ? data : []);
     } catch (err) {
@@ -89,7 +93,7 @@ export function MatrizExamesPage() {
     } finally {
       setLoading(false);
     }
-  }, [isAdmin, activeEmpresaId, filtroFuncaoId, filtroSetorId, toast]);
+  }, [isAdmin, activeEmpresaId, toast]);
 
   useEffect(() => {
     loadSelects();
@@ -99,10 +103,20 @@ export function MatrizExamesPage() {
     loadMatriz();
   }, [loadMatriz]);
 
+  const matrizFiltrada = useMemo(
+    () =>
+      matriz.filter(
+        (item) =>
+          (!filtroFuncaoIds.length || filtroFuncaoIds.includes(String(item.funcaoId))) &&
+          (!filtroSetorIds.length || filtroSetorIds.includes(String(item.setorId)))
+      ),
+    [matriz, filtroFuncaoIds, filtroSetorIds]
+  );
+
   // Agrupar itens por "Função + Setor"
   const groupedMatriz = useMemo(() => {
     const groups = new Map();
-    matriz.forEach((item) => {
+    matrizFiltrada.forEach((item) => {
       const key = `${item.funcaoId}-${item.setorId}`;
       if (!groups.has(key)) {
         groups.set(key, {
@@ -115,7 +129,16 @@ export function MatrizExamesPage() {
       groups.get(key).items.push(item);
     });
     return Array.from(groups.values());
-  }, [matriz]);
+  }, [matrizFiltrada]);
+
+  const toggleFiltro = (setFiltro, id) => {
+    const valor = String(id);
+    setFiltro((selecionados) =>
+      selecionados.includes(valor)
+        ? selecionados.filter((selecionado) => selecionado !== valor)
+        : [...selecionados, valor]
+    );
+  };
 
   const openCreateModal = () => {
     setEditingItem(null);
@@ -297,36 +320,44 @@ export function MatrizExamesPage() {
             <label className="form-label">
               <Filter size={14} /> Filtrar por Função
             </label>
-            <select
-              className="form-control"
-              value={filtroFuncaoId}
-              onChange={(e) => setFiltroFuncaoId(e.target.value)}
-            >
-              <option value="">Todas as funções</option>
+            <div className="filter-checkbox-list">
               {funcoes.map((f) => (
-                <option key={f.id} value={f.id}>
-                  {f.nome}
-                </option>
+                <label key={f.id} className="checkbox-field">
+                  <input
+                    type="checkbox"
+                    checked={filtroFuncaoIds.includes(String(f.id))}
+                    onChange={() => toggleFiltro(setFiltroFuncaoIds, f.id)}
+                  />
+                  <span>{f.nome}</span>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
 
           <div className="filter-item">
             <label className="form-label">Filtrar por Setor</label>
-            <select
-              className="form-control"
-              value={filtroSetorId}
-              onChange={(e) => setFiltroSetorId(e.target.value)}
-            >
-              <option value="">Todos os setores</option>
+            <div className="filter-checkbox-list">
               {setores.map((s) => (
-                <option key={s.id} value={s.id}>
-                  {s.nome}
-                </option>
+                <label key={s.id} className="checkbox-field">
+                  <input
+                    type="checkbox"
+                    checked={filtroSetorIds.includes(String(s.id))}
+                    onChange={() => toggleFiltro(setFiltroSetorIds, s.id)}
+                  />
+                  <span>{s.nome}</span>
+                </label>
               ))}
-            </select>
+            </div>
           </div>
+
         </div>
+        <ClearFiltersButton
+          active={Boolean(filtroFuncaoIds.length || filtroSetorIds.length)}
+          onClick={() => {
+            setFiltroFuncaoIds([]);
+            setFiltroSetorIds([]);
+          }}
+        />
       </div>
 
       {/* Listagem agrupada por Função + Setor */}

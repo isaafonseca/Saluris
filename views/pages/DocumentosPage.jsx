@@ -10,12 +10,21 @@ import { api } from '../api/client';
 import { useAuth } from '../context/AuthContext';
 import { useEmpresa } from '../context/EmpresaContext';
 import { useToast } from '../context/ToastContext';
-import { formatDate, formatDateTime, validatePdfFile } from '../utils/formatters';
+import {
+  formatDate,
+  formatDateTime,
+  STATUS_VALIDADE_LABELS,
+  validatePdfFile,
+} from '../utils/formatters';
 import { AdminEmpresaSelector } from '../components/ui/AdminEmpresaSelector';
 import { Table } from '../components/ui/Table';
 import { Modal } from '../components/ui/Modal';
 import { Badge, ValidadeBadge } from '../components/ui/Badge';
-import { FormField, EmptyState } from '../components/ui/Common';
+import {
+  ClearFiltersButton,
+  FormField,
+  EmptyState,
+} from '../components/ui/Common';
 
 export function DocumentosPage() {
   const { isAdmin, isEspecialista, isRh } = useAuth();
@@ -27,6 +36,10 @@ export function DocumentosPage() {
   const [documentos, setDocumentos] = useState([]);
   const [tiposDoc, setTiposDoc] = useState([]);
   const [somenteVigentes, setSomenteVigentes] = useState(false);
+  const [filtroTitulo, setFiltroTitulo] = useState('');
+  const [dataValidadeInicio, setDataValidadeInicio] = useState('');
+  const [dataValidadeFim, setDataValidadeFim] = useState('');
+  const [statusValidade, setStatusValidade] = useState('');
   const [loading, setLoading] = useState(false);
 
   // Modal Upload
@@ -69,6 +82,31 @@ export function DocumentosPage() {
   useEffect(() => {
     loadDocumentos();
   }, [loadDocumentos]);
+
+  const documentosFiltrados = useMemo(() => {
+    const tituloBusca = filtroTitulo.trim().toLocaleLowerCase('pt-BR');
+
+    return documentos.filter((documento) => {
+      const titulo = (documento.titulo || '').toLocaleLowerCase('pt-BR');
+      if (tituloBusca && !titulo.includes(tituloBusca)) return false;
+      if (statusValidade && documento.statusValidade !== statusValidade) return false;
+      if (dataValidadeInicio && (!documento.dataValidade || documento.dataValidade < dataValidadeInicio)) {
+        return false;
+      }
+      if (dataValidadeFim && (!documento.dataValidade || documento.dataValidade > dataValidadeFim)) {
+        return false;
+      }
+      return true;
+    });
+  }, [documentos, filtroTitulo, dataValidadeInicio, dataValidadeFim, statusValidade]);
+
+  const handleLimparFiltros = () => {
+    setFiltroTitulo('');
+    setDataValidadeInicio('');
+    setDataValidadeFim('');
+    setStatusValidade('');
+    setSomenteVigentes(false);
+  };
 
   // Identifica se o tipo selecionado é PCMSO para sugerir o PGR vigente como documento base
   const selectedTipoObj = useMemo(
@@ -272,6 +310,55 @@ export function DocumentosPage() {
       <div className="card filter-card">
         <div className="filter-row">
           <div className="filter-item">
+            <label className="form-label">Título</label>
+            <input
+              type="search"
+              className="form-control"
+              placeholder="Buscar pelo título do documento"
+              value={filtroTitulo}
+              onChange={(e) => setFiltroTitulo(e.target.value)}
+            />
+          </div>
+
+          <div className="filter-item">
+            <label className="form-label">Validade a partir de</label>
+            <input
+              type="date"
+              className="form-control"
+              value={dataValidadeInicio}
+              onChange={(e) => setDataValidadeInicio(e.target.value)}
+            />
+          </div>
+
+          <div className="filter-item">
+            <label className="form-label">Validade até</label>
+            <input
+              type="date"
+              className="form-control"
+              value={dataValidadeFim}
+              onChange={(e) => setDataValidadeFim(e.target.value)}
+            />
+          </div>
+
+          <div className="filter-item">
+            <label className="form-label">
+              <Filter size={14} /> Status de Validade
+            </label>
+            <select
+              className="form-control"
+              value={statusValidade}
+              onChange={(e) => setStatusValidade(e.target.value)}
+            >
+              <option value="">Todos</option>
+              {Object.entries(STATUS_VALIDADE_LABELS).map(([status, label]) => (
+                <option key={status} value={status}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="filter-item">
             <label className="checkbox-field">
               <input
                 type="checkbox"
@@ -283,15 +370,31 @@ export function DocumentosPage() {
               </span>
             </label>
           </div>
+
         </div>
+        <ClearFiltersButton
+          active={Boolean(
+            filtroTitulo ||
+              dataValidadeInicio ||
+              dataValidadeFim ||
+              statusValidade ||
+              somenteVigentes
+          )}
+          onClick={handleLimparFiltros}
+          disabled={loading}
+        />
       </div>
 
       <div className="card">
         <Table
           columns={columns}
-          data={documentos}
+          data={documentosFiltrados}
           loading={loading}
-          emptyTitle="Nenhum documento SST cadastrado"
+          emptyTitle={
+            documentos.length
+              ? 'Nenhum documento encontrado para os filtros aplicados'
+              : 'Nenhum documento SST cadastrado'
+          }
         />
       </div>
 

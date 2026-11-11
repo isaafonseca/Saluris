@@ -6,7 +6,10 @@ import { useEmpresa } from '../../context/EmpresaContext';
 import { formatDateTime } from '../../utils/formatters';
 import { Table } from '../../components/ui/Table';
 import { Badge } from '../../components/ui/Badge';
-import { Pagination } from '../../components/ui/Common';
+import {
+  ClearFiltersButton,
+  Pagination,
+} from '../../components/ui/Common';
 
 export function AuditoriaPage() {
   const toast = useToast();
@@ -183,6 +186,14 @@ export function AuditoriaPage() {
             </button>
           </div>
         </div>
+        <ClearFiltersButton
+          active={Boolean(filtroEmpresaId)}
+          onClick={() => {
+            setFiltroEmpresaId('');
+            setPage(0);
+          }}
+          disabled={loading}
+        />
       </div>
 
       {/* Tabela paginada */}

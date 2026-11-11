@@ -18,7 +18,12 @@ import { AdminEmpresaSelector } from '../components/ui/AdminEmpresaSelector';
 import { Table } from '../components/ui/Table';
 import { Modal } from '../components/ui/Modal';
 import { Badge, ValidadeBadge } from '../components/ui/Badge';
-import { FormField, Pagination, EmptyState } from '../components/ui/Common';
+import {
+  ClearFiltersButton,
+  FormField,
+  Pagination,
+  EmptyState,
+} from '../components/ui/Common';
 
 export function ColaboradoresPage() {
   const { isAdmin, isRh } = useAuth();
@@ -343,38 +348,35 @@ export function ColaboradoresPage() {
 
       {/* Busca */}
       <div className="card filter-card">
-        <form onSubmit={handleSearchSubmit} className="filter-row">
-          <div className="filter-item" style={{ flex: 2 }}>
-            <label className="form-label">Buscar por Nome ou CPF</label>
-            <div className="input-with-icon">
-              <Search size={17} className="input-icon" />
-              <input
-                type="text"
-                className="form-control"
-                placeholder="Digite o nome ou CPF do colaborador..."
-                value={buscaInput}
-                onChange={(e) => setBuscaInput(e.target.value)}
-              />
+        <form onSubmit={handleSearchSubmit}>
+          <div className="filter-row">
+            <div className="filter-item" style={{ flex: 2 }}>
+              <label className="form-label">Buscar por Nome ou CPF</label>
+              <div className="input-with-icon">
+                <Search size={17} className="input-icon" />
+                <input
+                  type="text"
+                  className="form-control"
+                  placeholder="Digite o nome ou CPF do colaborador..."
+                  value={buscaInput}
+                  onChange={(e) => setBuscaInput(e.target.value)}
+                />
+              </div>
+            </div>
+            <div className="filter-actions">
+              <button type="submit" className="btn btn-primary">
+                Buscar
+              </button>
             </div>
           </div>
-          <div className="filter-actions">
-            <button type="submit" className="btn btn-primary">
-              Buscar
-            </button>
-            {busca && (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={() => {
-                  setBuscaInput('');
-                  setBusca('');
-                  setPage(0);
-                }}
-              >
-                Limpar
-              </button>
-            )}
-          </div>
+          <ClearFiltersButton
+            active={Boolean(busca || buscaInput.trim())}
+            onClick={() => {
+              setBuscaInput('');
+              setBusca('');
+              setPage(0);
+            }}
+          />
         </form>
       </div>
 

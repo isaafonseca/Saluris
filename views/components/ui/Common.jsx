@@ -1,6 +1,23 @@
 import React from 'react';
-import { Loader2, Inbox, AlertTriangle } from 'lucide-react';
+import { Loader2, Inbox, AlertTriangle, XCircle } from 'lucide-react';
 import { Modal } from './Modal';
+
+export function ClearFiltersButton({ active, onClick, disabled = false }) {
+  if (!active) return null;
+
+  return (
+    <div className="filter-footer">
+      <button
+        type="button"
+        className="btn btn-secondary"
+        onClick={onClick}
+        disabled={disabled}
+      >
+        <XCircle size={16} /> Limpar Filtros
+      </button>
+    </div>
+  );
+}
 
 export function Loading({ text = 'Carregando dados...' }) {
   return (

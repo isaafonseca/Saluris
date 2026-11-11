@@ -7,7 +7,6 @@ import {
   Download,
   FileText,
   Filter,
-  XCircle,
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -29,7 +28,11 @@ import { formatDate } from '../utils/formatters';
 import { AdminEmpresaSelector } from '../components/ui/AdminEmpresaSelector';
 import { Table } from '../components/ui/Table';
 import { Badge, ValidadeBadge, FluxoExameBadge } from '../components/ui/Badge';
-import { Loading, EmptyState } from '../components/ui/Common';
+import {
+  ClearFiltersButton,
+  Loading,
+  EmptyState,
+} from '../components/ui/Common';
 
 const CHART_COLORS = {
   EM_DIA: '#16a34a',
@@ -316,100 +319,99 @@ export function DashboardPage() {
 
       {/* Filtros do Dashboard */}
       <div className="card filter-card">
-        <form onSubmit={handleAplicarFiltro} className="filter-row">
-          <div className="filter-item">
-            <label className="form-label">
-              <Filter size={14} /> Vencimento Início
-            </label>
-            <input
-              type="date"
-              className="form-control"
-              value={dataInicio}
-              onChange={(e) => setDataInicio(e.target.value)}
-            />
-          </div>
+        <form onSubmit={handleAplicarFiltro}>
+          <div className="filter-row">
+            <div className="filter-item">
+              <label className="form-label">
+                <Filter size={14} /> Vencimento Início
+              </label>
+              <input
+                type="date"
+                className="form-control"
+                value={dataInicio}
+                onChange={(e) => setDataInicio(e.target.value)}
+              />
+            </div>
 
-          <div className="filter-item">
-            <label className="form-label">Vencimento Fim</label>
-            <input
-              type="date"
-              className="form-control"
-              value={dataFim}
-              onChange={(e) => setDataFim(e.target.value)}
-            />
-          </div>
+            <div className="filter-item">
+              <label className="form-label">Vencimento Fim</label>
+              <input
+                type="date"
+                className="form-control"
+                value={dataFim}
+                onChange={(e) => setDataFim(e.target.value)}
+              />
+            </div>
 
-          <div className="filter-item">
-            <label className="form-label">Tipo de Exame</label>
-            <select
-              className="form-control"
-              value={tipoExameId}
-              onChange={(e) => setTipoExameId(e.target.value)}
-            >
-              <option value="">Todos os tipos</option>
-              {tiposExame.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-item">
-            <label className="form-label">Colaborador</label>
-            <select
-              className="form-control"
-              value={colaboradorId}
-              onChange={(e) => setColaboradorId(e.target.value)}
-            >
-              <option value="">Todos os colaboradores</option>
-              {colaboradores.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-item">
-            <label className="form-label">Situação / Validade</label>
-            <select
-              className="form-control"
-              value={statusValidade}
-              onChange={(e) => setStatusValidade(e.target.value)}
-            >
-              <option value="">Todas as situações</option>
-              <option value="EM_DIA">Em dia</option>
-              <option value="PROXIMO_VENCIMENTO">Próximo do Vencimento</option>
-              <option value="VENCIDO">Vencido</option>
-            </select>
-          </div>
-
-          <div className="filter-actions" style={{ display: 'flex', gap: '0.5rem', alignItems: 'flex-end' }}>
-            <button type="submit" className="btn btn-primary" disabled={loading}>
-              <Filter size={16} /> Aplicar Filtro
-            </button>
-
-            {(dataInicio ||
-              dataFim ||
-              tipoExameId ||
-              colaboradorId ||
-              statusValidade ||
-              appliedFilters.dataInicio ||
-              appliedFilters.dataFim ||
-              appliedFilters.tipoExameId ||
-              appliedFilters.colaboradorId ||
-              appliedFilters.statusValidade) && (
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={handleLimparFiltros}
-                disabled={loading}
+            <div className="filter-item">
+              <label className="form-label">Tipo de Exame</label>
+              <select
+                className="form-control"
+                value={tipoExameId}
+                onChange={(e) => setTipoExameId(e.target.value)}
               >
-                <XCircle size={16} /> Limpar Filtros
+                <option value="">Todos os tipos</option>
+                {tiposExame.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-item">
+              <label className="form-label">Colaborador</label>
+              <select
+                className="form-control"
+                value={colaboradorId}
+                onChange={(e) => setColaboradorId(e.target.value)}
+              >
+                <option value="">Todos os colaboradores</option>
+                {colaboradores.map((c) => (
+                  <option key={c.id} value={c.id}>
+                    {c.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="filter-item">
+              <label className="form-label">Situação / Validade</label>
+              <select
+                className="form-control"
+                value={statusValidade}
+                onChange={(e) => setStatusValidade(e.target.value)}
+              >
+                <option value="">Todas as situações</option>
+                <option value="EM_DIA">Em dia</option>
+                <option value="PROXIMO_VENCIMENTO">Próximo do Vencimento</option>
+                <option value="VENCIDO">Vencido</option>
+              </select>
+            </div>
+
+            <div className="filter-actions">
+              <button type="submit" className="btn btn-primary" disabled={loading}>
+                <Filter size={16} /> Aplicar Filtro
               </button>
-            )}
+            </div>
           </div>
+
+          <ClearFiltersButton
+            active={Boolean(
+              dataInicio ||
+                dataFim ||
+                tipoExameId ||
+                colaboradorId ||
+                statusValidade ||
+                appliedFilters.dataInicio ||
+                appliedFilters.dataFim ||
+                appliedFilters.tipoExameId ||
+                appliedFilters.colaboradorId ||
+                appliedFilters.statusValidade
+            )}
+            onClick={handleLimparFiltros}
+            disabled={loading}
+          />
         </form>
       </div>
 

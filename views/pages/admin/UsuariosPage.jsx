@@ -16,7 +16,10 @@ import { PERFIL_LABELS, UFS_BRASIL, formatDateTime } from '../../utils/formatter
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
-import { FormField } from '../../components/ui/Common';
+import {
+  ClearFiltersButton,
+  FormField,
+} from '../../components/ui/Common';
 
 export function UsuariosPage() {
   const toast = useToast();
@@ -350,7 +353,16 @@ export function UsuariosPage() {
               ))}
             </select>
           </div>
+
         </div>
+        <ClearFiltersButton
+          active={Boolean(filtroEmpresaId || filtroPerfil)}
+          onClick={() => {
+            setFiltroEmpresaId('');
+            setFiltroPerfil('');
+          }}
+          disabled={loading}
+        />
       </div>
 
       {/* Tabela */}

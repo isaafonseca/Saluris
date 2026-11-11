@@ -21,7 +21,12 @@ import { AdminEmpresaSelector } from '../components/ui/AdminEmpresaSelector';
 import { Table } from '../components/ui/Table';
 import { Modal } from '../components/ui/Modal';
 import { ValidadeBadge, FluxoExameBadge } from '../components/ui/Badge';
-import { FormField, Pagination, EmptyState } from '../components/ui/Common';
+import {
+  ClearFiltersButton,
+  FormField,
+  Pagination,
+  EmptyState,
+} from '../components/ui/Common';
 
 export function ExamesPage() {
   const { isAdmin, isRh } = useAuth();
@@ -391,7 +396,18 @@ export function ExamesPage() {
               <span>Incluir histórico homologado</span>
             </label>
           </div>
+
         </div>
+        <ClearFiltersButton
+          active={Boolean(statusValidade || statusFluxo || tipoExameId || incluirHistorico)}
+          onClick={() => {
+            setStatusValidade('');
+            setStatusFluxo('');
+            setTipoExameId('');
+            setIncluirHistorico(false);
+            setPage(0);
+          }}
+        />
       </div>
 
       {/* Tabela */}

@@ -134,7 +134,7 @@ export function AppLayout() {
           to: '/estrutura',
           label: 'Estrutura da Empresa',
           icon: Network,
-          roles: ['ESPECIALISTA_SST', 'RH_EMPRESA', 'ADMINISTRADOR'],
+          roles: ['RH_EMPRESA', 'ADMINISTRADOR'],
         },
         {
           to: '/matriz-exames',
