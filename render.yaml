@@ -47,6 +47,10 @@ services:
       - key: SALURIS_ADMIN_SENHA
         value: "Saluris@2026!"
 
+      # Popula empresa e contas de demonstração (Especialista, Médico e RH) caso não existam
+      - key: SALURIS_DEMO_SEED
+        value: "true"
+
       # Permissão de origens CORS para testes (aceita requisições do frontend local ou remoto)
       - key: SALURIS_CORS_ORIGENS
         value: "*"

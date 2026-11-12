@@ -15,7 +15,10 @@ public final class Perfis {
     public static final String ESPECIALISTA_OU_RH = "hasAnyRole('ESPECIALISTA_SST','RH_EMPRESA')";
 
     /** Dashboard e relatórios de conformidade (Quadros 09 e 10). */
-    public static final String CONFORMIDADE = "hasAnyRole('ADMINISTRADOR','ESPECIALISTA_SST','RH_EMPRESA')";
+    public static final String CONFORMIDADE = "hasAnyRole('ESPECIALISTA_SST','RH_EMPRESA')";
+
+    /** Perfis operacionais da empresa (exclui o Administrador de T.I.). */
+    public static final String OPERACIONAL = "hasAnyRole('ESPECIALISTA_SST','MEDICO_TRABALHO','RH_EMPRESA')";
 
     /** Qualquer usuário autenticado. */
     public static final String AUTENTICADO = "isAuthenticated()";

@@ -10,7 +10,6 @@ import { TrocarSenhaPage } from './pages/TrocarSenhaPage';
 import { UsuariosPage } from './pages/admin/UsuariosPage';
 import { EmpresasPage } from './pages/admin/EmpresasPage';
 import { CatalogosPage } from './pages/admin/CatalogosPage';
-import { AuditoriaPage } from './pages/admin/AuditoriaPage';
 import { EstruturaPage } from './pages/EstruturaPage';
 import { MatrizExamesPage } from './pages/MatrizExamesPage';
 import { ColaboradoresPage } from './pages/ColaboradoresPage';
@@ -113,20 +112,12 @@ export default function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/auditoria"
-            element={
-              <ProtectedRoute allowedRoles={['ADMINISTRADOR']}>
-                <AuditoriaPage />
-              </ProtectedRoute>
-            }
-          />
 
           {/* Dashboard */}
           <Route
             path="/dashboard"
             element={
-              <ProtectedRoute allowedRoles={['ESPECIALISTA_SST', 'RH_EMPRESA', 'ADMINISTRADOR']}>
+              <ProtectedRoute allowedRoles={['ESPECIALISTA_SST', 'RH_EMPRESA']}>
                 <DashboardPage />
               </ProtectedRoute>
             }
@@ -136,7 +127,7 @@ export default function App() {
           <Route
             path="/estrutura"
             element={
-              <ProtectedRoute allowedRoles={['RH_EMPRESA', 'ADMINISTRADOR']}>
+              <ProtectedRoute allowedRoles={['ESPECIALISTA_SST', 'RH_EMPRESA']}>
                 <EstruturaPage />
               </ProtectedRoute>
             }
@@ -146,7 +137,7 @@ export default function App() {
           <Route
             path="/matriz-exames"
             element={
-              <ProtectedRoute allowedRoles={['ESPECIALISTA_SST', 'RH_EMPRESA', 'ADMINISTRADOR']}>
+              <ProtectedRoute allowedRoles={['ESPECIALISTA_SST', 'RH_EMPRESA']}>
                 <MatrizExamesPage />
               </ProtectedRoute>
             }
@@ -156,7 +147,7 @@ export default function App() {
           <Route
             path="/colaboradores"
             element={
-              <ProtectedRoute allowedRoles={['RH_EMPRESA', 'ESPECIALISTA_SST', 'ADMINISTRADOR']}>
+              <ProtectedRoute allowedRoles={['RH_EMPRESA', 'ESPECIALISTA_SST']}>
                 <ColaboradoresPage />
               </ProtectedRoute>
             }
@@ -164,7 +155,7 @@ export default function App() {
           <Route
             path="/colaboradores/:id"
             element={
-              <ProtectedRoute allowedRoles={['RH_EMPRESA', 'ESPECIALISTA_SST', 'ADMINISTRADOR']}>
+              <ProtectedRoute allowedRoles={['RH_EMPRESA', 'ESPECIALISTA_SST']}>
                 <ColaboradorDetalhePage />
               </ProtectedRoute>
             }
@@ -174,7 +165,7 @@ export default function App() {
           <Route
             path="/exames"
             element={
-              <ProtectedRoute allowedRoles={['RH_EMPRESA', 'ESPECIALISTA_SST', 'ADMINISTRADOR']}>
+              <ProtectedRoute allowedRoles={['RH_EMPRESA', 'ESPECIALISTA_SST']}>
                 <ExamesPage />
               </ProtectedRoute>
             }
@@ -184,7 +175,7 @@ export default function App() {
           <Route
             path="/documentos"
             element={
-              <ProtectedRoute allowedRoles={['ESPECIALISTA_SST', 'RH_EMPRESA', 'ADMINISTRADOR']}>
+              <ProtectedRoute allowedRoles={['ESPECIALISTA_SST', 'RH_EMPRESA']}>
                 <DocumentosPage />
               </ProtectedRoute>
             }
@@ -194,14 +185,7 @@ export default function App() {
           <Route
             path="/laudos"
             element={
-              <ProtectedRoute
-                allowedRoles={[
-                  'ESPECIALISTA_SST',
-                  'MEDICO_TRABALHO',
-                  'RH_EMPRESA',
-                  'ADMINISTRADOR',
-                ]}
-              >
+              <ProtectedRoute allowedRoles={['ESPECIALISTA_SST', 'MEDICO_TRABALHO', 'RH_EMPRESA']}>
                 <LaudosPage />
               </ProtectedRoute>
             }

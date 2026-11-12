@@ -50,9 +50,9 @@ export function TrocarSenhaPage() {
     setLoading(true);
     try {
       await api.post('/auth/trocar-senha', { senhaAtual, novaSenha });
-      await refreshUser();
+      const updatedUser = await refreshUser();
       toast.success('Senha atualizada com sucesso!');
-      navigate(getHomeRouteForPerfil(user?.perfil), { replace: true });
+      navigate(getHomeRouteForPerfil(updatedUser?.perfil || user?.perfil), { replace: true });
     } catch (err) {
       setErrorMsg(err.detail || 'Não foi possível alterar a senha.');
       if (err.erros) {

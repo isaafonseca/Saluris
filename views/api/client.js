@@ -105,10 +105,6 @@ export async function request(path, options = {}) {
   }
 
   if (response.status === 401 && !skipAuthRedirect) {
-    const demoResult = handleDemoRequest(method, path, body, params);
-    if (demoResult !== null) {
-      return demoResult;
-    }
     handleUnauthorized();
     throw new ApiError(401, 'Não autenticado', 'Sua sessão expirou. Faça login novamente.', {});
   }
@@ -133,15 +129,7 @@ export async function request(path, options = {}) {
 
   const contentType = response.headers.get('content-type') || '';
   if (contentType.includes('application/json') || contentType.includes('application/problem+json')) {
-    const json = await response.json();
-    // Se o banco estiver sem registros iniciais em uma listagem (sem filtros ativos), preenche com os dados demonstrativos
-    if (method === 'GET' && isEmptyResult(path, json, params)) {
-      const demoResult = handleDemoRequest(method, path, body, params);
-      if (demoResult !== null) {
-        return demoResult;
-      }
-    }
-    return json;
+    return await response.json();
   }
   return response.text();
 }

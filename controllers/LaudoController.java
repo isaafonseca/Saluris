@@ -35,7 +35,7 @@ public class LaudoController {
     }
 
     @GetMapping
-    @PreAuthorize(Perfis.AUTENTICADO)
+    @PreAuthorize(Perfis.OPERACIONAL)
     public List<LaudoService.LaudoResponse> listar(
             @RequestParam(required = false) Long empresaId,
             @RequestParam(required = false) StatusLaudo status) {
@@ -64,7 +64,7 @@ public class LaudoController {
     }
 
     @GetMapping("/{id}/arquivo")
-    @PreAuthorize(Perfis.AUTENTICADO)
+    @PreAuthorize(Perfis.OPERACIONAL)
     public ResponseEntity<byte[]> baixarArquivo(@PathVariable Long id) {
         ArquivoStorageService.PdfCarregado pdf = laudoService.baixarArquivo(id);
         return ResponseEntity.ok()

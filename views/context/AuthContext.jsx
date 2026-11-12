@@ -91,18 +91,22 @@ export function AuthProvider({ children }) {
       if (me) {
         setUser(me);
         localStorage.setItem('saluris_user', JSON.stringify(me));
+        return me;
       } else {
         const fallback = getInitialUser();
         setUser(fallback);
+        return fallback;
       }
     } catch (err) {
       if (err?.status === 401) {
         setToken(null);
         localStorage.removeItem('saluris_user');
         setUser(null);
+        return null;
       } else {
         const fallback = getInitialUser();
         setUser(fallback);
+        return fallback;
       }
     } finally {
       setLoading(false);
@@ -146,7 +150,7 @@ export function AuthProvider({ children }) {
   };
 
   const refreshUser = async () => {
-    await loadMe();
+    return await loadMe();
   };
 
   return (

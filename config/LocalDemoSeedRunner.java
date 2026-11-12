@@ -9,7 +9,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
@@ -70,7 +70,7 @@ import java.nio.charset.StandardCharsets;
  * permitindo testar imediatamente todas as telas do sistema.
  */
 @Component
-@Profile("local")
+@ConditionalOnProperty(name = "saluris.demo.seed", havingValue = "true")
 @Order(3)
 public class LocalDemoSeedRunner implements ApplicationRunner {
 
@@ -143,14 +143,15 @@ public class LocalDemoSeedRunner implements ApplicationRunner {
     @Override
     @Transactional
     public void run(ApplicationArguments args) {
-        if (empresaRepository.count() == 0) {
+        if (empresaRepository.findByCnpj("11222333000181").isEmpty()
+                && usuarioRepository.findByEmailIgnoreCase("especialista@saluris.com.br").isEmpty()) {
             seedBaseDemoData();
         }
         seedComplementarSeVazio();
     }
 
     private void seedBaseDemoData() {
-        log.info("Criando dados iniciais de demonstração (perfil local)...");
+        log.info("Criando dados iniciais de demonstração...");
         String hash = passwordEncoder.encode(SENHA_PADRAO);
 
         Empresa emp = new Empresa();
@@ -276,13 +277,17 @@ public class LocalDemoSeedRunner implements ApplicationRunner {
     }
 
     private void seedComplementarSeVazio() {
-        List<Empresa> empresas = empresaRepository.findAll();
-        if (empresas.isEmpty()) {
+        Empresa emp = empresaRepository.findByCnpj("11222333000181").orElse(null);
+        if (emp == null) {
             return;
         }
-        Empresa emp = empresas.get(0);
         LocalDate hoje = LocalDate.now();
-        List<Usuario> usuarios = usuarioRepository.findAll();
+        List<Usuario> usuarios = usuarioRepository.findAll().stream()
+                .filter(u -> emp.getId().equals(u.getEmpresaId()))
+                .toList();
+        if (usuarios.isEmpty()) {
+            return;
+        }
         Usuario especialista = usuarios.stream()
                 .filter(u -> u.getPerfil() == Perfil.ESPECIALISTA_SST)
                 .findFirst().orElse(usuarios.get(0));
@@ -398,7 +403,10 @@ public class LocalDemoSeedRunner implements ApplicationRunner {
             List<Laudo> laudos = laudoRepository.findAll();
 
             for (Usuario u : usuarios) {
-                Long empId = u.getEmpresaId() != null ? u.getEmpresaId() : emp.getId();
+                if (u.getEmpresaId() == null || !u.getEmpresaId().equals(emp.getId())) {
+                    continue;
+                }
+                Long empId = u.getEmpresaId();
                 if (!exames.isEmpty()) {
                     Notificacao n1 = new Notificacao();
                     n1.setEmpresaId(empId);
@@ -439,7 +447,10 @@ public class LocalDemoSeedRunner implements ApplicationRunner {
 
         if (iaConversaRepository.count() == 0) {
             for (Usuario u : usuarios) {
-                Long empId = u.getEmpresaId() != null ? u.getEmpresaId() : emp.getId();
+                if (u.getEmpresaId() == null || !u.getEmpresaId().equals(emp.getId())) {
+                    continue;
+                }
+                Long empId = u.getEmpresaId();
                 IaConversa conv = new IaConversa();
                 conv.setEmpresaId(empId);
                 conv.setUsuario(u);
@@ -502,17 +513,19 @@ public class LocalDemoSeedRunner implements ApplicationRunner {
 
     private Usuario criarUsuario(String nome, String email, String hash, Perfil perfil,
             Long empresaId, String crm, String crmUf) {
-        Usuario u = new Usuario();
-        u.setNome(nome);
-        u.setEmail(email);
-        u.setSenhaHash(hash);
-        u.setPerfil(perfil);
-        u.setEmpresaId(empresaId);
-        u.setCrm(crm);
-        u.setCrmUf(crmUf);
-        u.setDeveTrocarSenha(false);
-        u.setAtivo(true);
-        return usuarioRepository.save(u);
+        return usuarioRepository.findByEmailIgnoreCase(email).orElseGet(() -> {
+            Usuario u = new Usuario();
+            u.setNome(nome);
+            u.setEmail(email);
+            u.setSenhaHash(hash);
+            u.setPerfil(perfil);
+            u.setEmpresaId(empresaId);
+            u.setCrm(crm);
+            u.setCrmUf(crmUf);
+            u.setDeveTrocarSenha(false);
+            u.setAtivo(true);
+            return usuarioRepository.save(u);
+        });
     }
 
     private Unidade criarUnidade(Long empresaId, String nome, String cidade, String uf) {

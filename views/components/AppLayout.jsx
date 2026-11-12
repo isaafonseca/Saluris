@@ -15,7 +15,6 @@ import {
   PenTool,
   Bot,
   Bell,
-  History,
   LogOut,
   Menu,
   X,
@@ -54,7 +53,11 @@ export function AppLayout() {
   useEffect(() => {
     fetchUnreadCount();
     const timer = setInterval(fetchUnreadCount, 60000);
-    return () => clearInterval(timer);
+    window.addEventListener('saluris:notificacoes-atualizadas', fetchUnreadCount);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('saluris:notificacoes-atualizadas', fetchUnreadCount);
+    };
   }, [fetchUnreadCount]);
 
   // Atualiza contagem e limpa filtro de empresa ao trocar de página
@@ -122,7 +125,7 @@ export function AppLayout() {
           to: '/dashboard',
           label: 'Dashboard & Relatórios',
           icon: LayoutDashboard,
-          roles: ['ESPECIALISTA_SST', 'RH_EMPRESA', 'ADMINISTRADOR'],
+          roles: ['ESPECIALISTA_SST', 'RH_EMPRESA'],
         },
         {
           to: '/assinaturas',
@@ -134,37 +137,37 @@ export function AppLayout() {
           to: '/estrutura',
           label: 'Estrutura da Empresa',
           icon: Network,
-          roles: ['RH_EMPRESA', 'ADMINISTRADOR'],
+          roles: ['ESPECIALISTA_SST', 'RH_EMPRESA'],
         },
         {
           to: '/matriz-exames',
           label: 'Matriz de Periodicidade',
           icon: CalendarClock,
-          roles: ['ESPECIALISTA_SST', 'RH_EMPRESA', 'ADMINISTRADOR'],
+          roles: ['ESPECIALISTA_SST', 'RH_EMPRESA'],
         },
         {
           to: '/colaboradores',
           label: 'Colaboradores',
           icon: UserCheck,
-          roles: ['RH_EMPRESA', 'ESPECIALISTA_SST', 'ADMINISTRADOR'],
+          roles: ['RH_EMPRESA', 'ESPECIALISTA_SST'],
         },
         {
           to: '/exames',
           label: 'Exames Ocupacionais',
           icon: Stethoscope,
-          roles: ['RH_EMPRESA', 'ESPECIALISTA_SST', 'ADMINISTRADOR'],
+          roles: ['RH_EMPRESA', 'ESPECIALISTA_SST'],
         },
         {
           to: '/documentos',
           label: 'Documentos SST',
           icon: FileText,
-          roles: ['ESPECIALISTA_SST', 'RH_EMPRESA', 'ADMINISTRADOR'],
+          roles: ['ESPECIALISTA_SST', 'RH_EMPRESA'],
         },
         {
           to: '/laudos',
           label: 'Laudos Técnicos',
           icon: FileCheck2,
-          roles: ['ESPECIALISTA_SST', 'MEDICO_TRABALHO', 'RH_EMPRESA', 'ADMINISTRADOR'],
+          roles: ['ESPECIALISTA_SST', 'MEDICO_TRABALHO', 'RH_EMPRESA'],
         },
         {
           to: '/ia',
@@ -178,27 +181,21 @@ export function AppLayout() {
       title: 'Administração (T.I.)',
       items: [
         {
-          to: '/usuarios',
-          label: 'Usuários',
-          icon: Users,
-          roles: ['ADMINISTRADOR'],
-        },
-        {
           to: '/empresas',
           label: 'Empresas',
           icon: Building2,
           roles: ['ADMINISTRADOR'],
         },
         {
-          to: '/catalogos',
-          label: 'Catálogos de SST',
-          icon: BookOpen,
+          to: '/usuarios',
+          label: 'Usuários',
+          icon: Users,
           roles: ['ADMINISTRADOR'],
         },
         {
-          to: '/auditoria',
-          label: 'Auditoria & Rotina',
-          icon: History,
+          to: '/catalogos',
+          label: 'Configurações (Catálogos)',
+          icon: BookOpen,
           roles: ['ADMINISTRADOR'],
         },
       ],
@@ -323,7 +320,7 @@ export function AppLayout() {
               {notifOpen && (
                 <div className="notif-dropdown">
                   <div className="notif-dropdown-header">
-                    <strong>Notificações</strong>
+                    <strong>{user?.perfil === 'ADMINISTRADOR' ? 'Configurações & Problemas' : 'Notificações'}</strong>
                     {unreadCount > 0 && (
                       <button
                         type="button"
@@ -338,7 +335,11 @@ export function AppLayout() {
                     {loadingNotifs ? (
                       <div className="notif-empty">Carregando...</div>
                     ) : recentNotifs.length === 0 ? (
-                      <div className="notif-empty">Nenhuma notificação recente.</div>
+                      <div className="notif-empty">
+                        {user?.perfil === 'ADMINISTRADOR'
+                          ? 'Nenhum problema ou pendência de configuração.'
+                          : 'Nenhuma notificação recente.'}
+                      </div>
                     ) : (
                       recentNotifs.map((n) => (
                         <div

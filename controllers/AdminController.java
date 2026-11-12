@@ -27,6 +27,7 @@ public class AdminController {
     }
 
     @GetMapping("/auditoria")
+    @PreAuthorize("denyAll()")
     public PageResponse<AuditoriaService.LogAuditoriaResponse> listarAuditoria(
             @RequestParam(required = false) Long empresaId,
             @RequestParam(defaultValue = "0") int page,

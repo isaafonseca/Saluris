@@ -62,5 +62,7 @@ saluris:
     dir: ${SALURIS_STORAGE_DIR:${user.home}/.saluris/arquivos}
   ia:
     api-key: ${OPENAI_API_KEY:}
+  demo:
+    seed: ${SALURIS_DEMO_SEED:false}
     modelo: ${OPENAI_MODEL:gpt-4o-mini}
     base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}

@@ -47,18 +47,24 @@ public class NotificacaoService {
     private final NotificacaoRepository notificacaoRepository;
     private final UsuarioRepository usuarioRepository;
     private final EmailService emailService;
+    private final AdminSistemaNotificacaoService adminSistemaNotificacaoService;
 
     public NotificacaoService(NotificacaoRepository notificacaoRepository,
             UsuarioRepository usuarioRepository,
-            EmailService emailService) {
+            EmailService emailService,
+            AdminSistemaNotificacaoService adminSistemaNotificacaoService) {
         this.notificacaoRepository = notificacaoRepository;
         this.usuarioRepository = usuarioRepository;
         this.emailService = emailService;
+        this.adminSistemaNotificacaoService = adminSistemaNotificacaoService;
     }
 
     @Transactional(readOnly = true)
     public PageResponse<NotificacaoResponse> listarMinhas(Pageable pageable) {
         Long usuarioId = TenantContext.exigirUsuario().getId();
+        if (TenantContext.isAdministrador()) {
+            return adminSistemaNotificacaoService.listar(usuarioId, pageable);
+        }
         Page<Notificacao> page = notificacaoRepository.findByUsuarioIdOrderByCriadoEmDesc(usuarioId, pageable);
         return PageResponse.de(page, NotificacaoService::paraResposta);
     }
@@ -66,12 +72,19 @@ public class NotificacaoService {
     @Transactional(readOnly = true)
     public long contarNaoLidas() {
         Long usuarioId = TenantContext.exigirUsuario().getId();
+        if (TenantContext.isAdministrador()) {
+            return adminSistemaNotificacaoService.contarNaoLidas(usuarioId);
+        }
         return notificacaoRepository.countByUsuarioIdAndLidaFalse(usuarioId);
     }
 
     @Transactional
     public void marcarComoLida(Long id) {
         Long usuarioId = TenantContext.exigirUsuario().getId();
+        if (TenantContext.isAdministrador()) {
+            adminSistemaNotificacaoService.marcarComoLida(usuarioId, id);
+            return;
+        }
         Notificacao notif = notificacaoRepository.findByIdAndUsuarioId(id, usuarioId)
                 .orElseThrow(() -> new RecursoNaoEncontradoException("Notificação não encontrada."));
         notif.marcarComoLida();
@@ -80,6 +93,10 @@ public class NotificacaoService {
     @Transactional
     public void marcarTodasComoLidas() {
         Long usuarioId = TenantContext.exigirUsuario().getId();
+        if (TenantContext.isAdministrador()) {
+            adminSistemaNotificacaoService.marcarTodasComoLidas(usuarioId);
+            return;
+        }
         notificacaoRepository.marcarTodasComoLidas(usuarioId, OffsetDateTime.now());
     }
 

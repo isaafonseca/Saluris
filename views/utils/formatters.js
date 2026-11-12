@@ -159,7 +159,7 @@ export const UFS_BRASIL = [
 export function getHomeRouteForPerfil(perfil) {
   switch (perfil) {
     case 'ADMINISTRADOR':
-      return '/usuarios';
+      return '/empresas';
     case 'ESPECIALISTA_SST':
     case 'RH_EMPRESA':
       return '/dashboard';

@@ -70,7 +70,7 @@ public class ExameController {
     }
 
     @GetMapping("/{id}/arquivo")
-    @PreAuthorize(Perfis.AUTENTICADO)
+    @PreAuthorize(Perfis.OPERACIONAL)
     public ResponseEntity<byte[]> baixarArquivo(@PathVariable Long id) {
         ArquivoStorageService.PdfCarregado pdf = exameService.baixarArquivo(id);
         return ResponseEntity.ok()
