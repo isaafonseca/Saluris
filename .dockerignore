@@ -1,0 +1,24 @@
+# Controle de versão e IDEs
+.git
+.gitignore
+.idea
+.vscode
+*.iml
+
+# Node / dependências locais
+node_modules
+.vite
+
+# Artefatos locais
+target
+*.log
+
+# Scripts e documentação não utilizados no build do container
+iniciar.ps1
+docs
+*.md
+
+# Arquivos de ambiente locais e uploads temporários
+.env
+.env.*
+uploads
