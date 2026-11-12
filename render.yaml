@@ -1,0 +1,56 @@
+databases:
+  - name: saluris-db
+    databaseName: saluris
+    user: saluris
+    plan: free
+
+services:
+  - type: web
+    name: saluris-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/status
+    envVars:
+      # Conexão com o banco de dados PostgreSQL gerenciado pelo Render
+      - key: DB_HOST
+        fromDatabase:
+          name: saluris-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: saluris-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: saluris-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: saluris-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: saluris-db
+          property: password
+
+      # Chave de assinatura JWT (Base64 com no mínimo 32 bytes / 256 bits)
+      - key: SALURIS_JWT_SECRET
+        value: "U2FsdXJpc0lhU2VjdXJlSldUU2VjcmV0S2V5Rm9yUmVuZGVyRGVwbG95MzJCeXRlczE="
+
+      # Usuário Administrador inicial (Bootstrap na primeira inicialização)
+      - key: SALURIS_ADMIN_NOME
+        value: "Administrador Saluris"
+      - key: SALURIS_ADMIN_EMAIL
+        value: "admin@saluris.com.br"
+      - key: SALURIS_ADMIN_SENHA
+        value: "Saluris@2026!"
+
+      # Permissão de origens CORS para testes (aceita requisições do frontend local ou remoto)
+      - key: SALURIS_CORS_ORIGENS
+        value: "*"
+
+      # Chave da OpenAI para o Agente IA (opcional; sem chave, opera em modo OFFLINE consultando as NRs)
+      - key: OPENAI_API_KEY
+        sync: false
