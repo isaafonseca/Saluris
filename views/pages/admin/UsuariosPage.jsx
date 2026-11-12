@@ -8,23 +8,27 @@ import {
   Power,
   AlertCircle,
   Filter,
+  Info,
+  ShieldCheck,
 } from 'lucide-react';
 import { api } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
-import { useEmpresa } from '../../context/EmpresaContext';
+import { useAuth } from '../../context/AuthContext';
 import { PERFIL_LABELS, UFS_BRASIL, formatDateTime } from '../../utils/formatters';
 import { Table } from '../../components/ui/Table';
 import { Modal } from '../../components/ui/Modal';
 import { Badge } from '../../components/ui/Badge';
 import { FormField } from '../../components/ui/Common';
 
+const PERFIS_OPERACIONAIS_EMPRESA = ['RH_EMPRESA', 'MEDICO_TRABALHO', 'ESPECIALISTA_SST'];
+const PERFIS_EMPRESA_FILTRO = ['ADMIN_EMPRESA', ...PERFIS_OPERACIONAIS_EMPRESA];
+
 export function UsuariosPage() {
   const toast = useToast();
-  const { empresas, reloadEmpresas } = useEmpresa();
+  const { user, isAdmin: isGlobalAdmin, isAdminEmpresa: isCompanyAdmin } = useAuth();
 
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filtroEmpresaId, setFiltroEmpresaId] = useState('');
   const [filtroPerfil, setFiltroPerfil] = useState('');
 
   // Modal Criar / Editar
@@ -33,7 +37,7 @@ export function UsuariosPage() {
   const [form, setForm] = useState({
     nome: '',
     email: '',
-    perfil: 'RH_EMPRESA',
+    perfil: isGlobalAdmin ? 'ADMINISTRADOR' : 'RH_EMPRESA',
     empresaId: '',
     crm: '',
     crmUf: 'SP',
@@ -50,7 +54,6 @@ export function UsuariosPage() {
     setLoading(true);
     try {
       const data = await api.get('/usuarios', {
-        empresaId: filtroEmpresaId || undefined,
         perfil: filtroPerfil || undefined,
       });
       setUsuarios(Array.isArray(data) ? data : []);
@@ -59,11 +62,7 @@ export function UsuariosPage() {
     } finally {
       setLoading(false);
     }
-  }, [filtroEmpresaId, filtroPerfil, toast]);
-
-  useEffect(() => {
-    reloadEmpresas();
-  }, [reloadEmpresas]);
+  }, [filtroPerfil, toast]);
 
   useEffect(() => {
     loadUsuarios();
@@ -74,8 +73,8 @@ export function UsuariosPage() {
     setForm({
       nome: '',
       email: '',
-      perfil: 'RH_EMPRESA',
-      empresaId: empresas[0]?.id ? String(empresas[0].id) : '',
+      perfil: isGlobalAdmin ? 'ADMINISTRADOR' : 'RH_EMPRESA',
+      empresaId: isCompanyAdmin && user?.empresaId ? String(user.empresaId) : '',
       crm: '',
       crmUf: 'SP',
     });
@@ -89,8 +88,8 @@ export function UsuariosPage() {
     setForm({
       nome: u.nome || '',
       email: u.email || '',
-      perfil: u.perfil || 'RH_EMPRESA',
-      empresaId: u.empresaId ? String(u.empresaId) : '',
+      perfil: u.perfil || (isGlobalAdmin ? 'ADMINISTRADOR' : 'RH_EMPRESA'),
+      empresaId: u.empresaId ? String(u.empresaId) : isCompanyAdmin && user?.empresaId ? String(user.empresaId) : '',
       crm: u.crm || '',
       crmUf: u.crmUf || 'SP',
     });
@@ -99,8 +98,16 @@ export function UsuariosPage() {
     setModalOpen(true);
   };
 
-  const requiresEmpresa = form.perfil !== 'ADMINISTRADOR';
-  const requiresCrm = form.perfil === 'MEDICO_TRABALHO';
+  const isEditingMainCompanyAccount = Boolean(
+    isCompanyAdmin && editingUser && editingUser.perfil === 'ADMIN_EMPRESA'
+  );
+  const effectivePerfil = isGlobalAdmin
+    ? 'ADMINISTRADOR'
+    : isEditingMainCompanyAccount
+      ? 'ADMIN_EMPRESA'
+      : form.perfil;
+  const requiresEmpresa = effectivePerfil !== 'ADMINISTRADOR';
+  const requiresCrm = effectivePerfil === 'MEDICO_TRABALHO';
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -110,7 +117,10 @@ export function UsuariosPage() {
     const errs = {};
     if (!form.nome.trim()) errs.nome = 'Informe o nome completo.';
     if (!editingUser && !form.email.trim()) errs.email = 'Informe o e-mail.';
-    if (requiresEmpresa && !form.empresaId) {
+    const empresaIdResolvida = requiresEmpresa
+      ? Number(form.empresaId || user?.empresaId)
+      : null;
+    if (requiresEmpresa && !empresaIdResolvida) {
       errs.empresaId = 'Este perfil exige vínculo com uma empresa.';
     }
     if (requiresCrm) {
@@ -124,8 +134,8 @@ export function UsuariosPage() {
 
     const payload = {
       nome: form.nome.trim(),
-      perfil: form.perfil,
-      empresaId: requiresEmpresa ? Number(form.empresaId) : null,
+      perfil: effectivePerfil,
+      empresaId: requiresEmpresa ? empresaIdResolvida : null,
       crm: requiresCrm ? form.crm.trim() : null,
       crmUf: requiresCrm ? form.crmUf : null,
     };
@@ -202,7 +212,10 @@ export function UsuariosPage() {
       header: 'Nome / E-mail',
       render: (u) => (
         <div>
-          <div className="font-semibold">{u.nome}</div>
+          <div className="font-semibold">
+            {u.nome}
+            {u.id === user?.id && <span className="text-muted"> (você)</span>}
+          </div>
           <div className="text-muted text-xs">{u.email}</div>
         </div>
       ),
@@ -211,7 +224,9 @@ export function UsuariosPage() {
       header: 'Perfil',
       render: (u) => (
         <div>
-          <Badge variant="info">{PERFIL_LABELS[u.perfil] || u.perfil}</Badge>
+          <Badge variant={u.perfil === 'ADMIN_EMPRESA' ? 'warning' : 'info'}>
+            {PERFIL_LABELS[u.perfil] || u.perfil}
+          </Badge>
           {u.crm && (
             <div className="text-xs text-muted" style={{ marginTop: 4 }}>
               CRM: {u.crm}/{u.crmUf}
@@ -221,7 +236,7 @@ export function UsuariosPage() {
       ),
     },
     {
-      header: 'Empresa',
+      header: 'Escopo / Empresa',
       render: (u) => u.empresaNome || <span className="text-muted">Global (T.I.)</span>,
     },
     {
@@ -241,33 +256,41 @@ export function UsuariosPage() {
     },
     {
       header: 'Ações',
-      render: (u) => (
-        <div className="table-actions">
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => openEditModal(u)}
-            title="Editar usuário"
-          >
-            <Edit3 size={15} /> Editar
-          </button>
-          <button
-            type="button"
-            className="btn btn-secondary btn-sm"
-            onClick={() => handleResetPassword(u)}
-            title="Gerar nova senha temporária"
-          >
-            <KeyRound size={15} /> Redefinir Senha
-          </button>
-          <button
-            type="button"
-            className={`btn btn-sm ${u.ativo ? 'btn-outline-danger' : 'btn-outline-success'}`}
-            onClick={() => handleToggleAtivo(u)}
-          >
-            <Power size={15} /> {u.ativo ? 'Desativar' : 'Ativar'}
-          </button>
-        </div>
-      ),
+      render: (u) => {
+        const isSelf = u.id === user?.id;
+        const isMainCompanyAccount = u.perfil === 'ADMIN_EMPRESA';
+        return (
+          <div className="table-actions">
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={() => openEditModal(u)}
+              title="Editar usuário"
+            >
+              <Edit3 size={15} /> Editar
+            </button>
+            {!isSelf && (
+              <button
+                type="button"
+                className="btn btn-secondary btn-sm"
+                onClick={() => handleResetPassword(u)}
+                title="Gerar nova senha temporária"
+              >
+                <KeyRound size={15} /> Redefinir Senha
+              </button>
+            )}
+            {!isSelf && !isMainCompanyAccount && (
+              <button
+                type="button"
+                className={`btn btn-sm ${u.ativo ? 'btn-outline-danger' : 'btn-outline-success'}`}
+                onClick={() => handleToggleAtivo(u)}
+              >
+                <Power size={15} /> {u.ativo ? 'Desativar' : 'Ativar'}
+              </button>
+            )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -275,14 +298,38 @@ export function UsuariosPage() {
     <div className="page-container">
       <div className="page-header">
         <div>
-          <h2>Gestão de Usuários</h2>
+          <h2>
+            {isGlobalAdmin
+              ? 'Administradores (T.I.)'
+              : `Usuários da Empresa${user?.empresaNome ? ` — ${user.empresaNome}` : ''}`}
+          </h2>
           <p className="page-subtitle">
-            Cadastre e gerencie contas de acesso por empresa e perfil (Administrador, Especialista SST, Médico do Trabalho e RH).
+            {isGlobalAdmin
+              ? 'Cadastre e gerencie apenas outros Administradores globais (T.I.). Usuários internos de empresas são criados pela Conta Principal de cada empresa.'
+              : 'Gerencie os usuários operacionais da sua empresa (RH da Empresa, Médico do Trabalho e Especialista SST).'}
           </p>
         </div>
         <button type="button" className="btn btn-primary" onClick={openCreateModal}>
-          <UserPlus size={18} /> Novo Usuário
+          <UserPlus size={18} />{' '}
+          {isGlobalAdmin ? 'Novo Administrador (T.I.)' : 'Novo Usuário da Empresa'}
         </button>
+      </div>
+
+      <div className="alert alert-info" style={{ marginBottom: '1rem' }}>
+        <Info size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+        {isGlobalAdmin ? (
+          <div>
+            <strong>Escopo exclusivo de T.I.:</strong> aqui você gerencia apenas contas de{' '}
+            <strong>Administrador (T.I.)</strong>. Para dar acesso a uma empresa cliente, crie a empresa em{' '}
+            <strong>Empresas Clientes</strong> vinculando o e-mail da <strong>Conta Principal da Empresa</strong> &mdash; somente ela pode criar e visualizar os usuários internos dessa empresa, e apenas{' '}
+            <strong>RH</strong>, <strong>Médico do Trabalho</strong> e <strong>Especialista SST</strong> acessam os dados de SST da empresa.
+          </div>
+        ) : (
+          <div>
+            <strong>Conta Principal da Empresa ({user?.empresaNome || 'Empresa vinculada'}):</strong> você é responsável por criar e gerenciar as contas de{' '}
+            <strong>RH da Empresa</strong>, <strong>Médico do Trabalho</strong> e <strong>Especialista SST</strong> desta empresa. Os dados operacionais de SST ficam restritos a esses perfis cadastrados na empresa.
+          </div>
+        )}
       </div>
 
       {/* Caixa destacada de Senha Temporária */}
@@ -314,44 +361,30 @@ export function UsuariosPage() {
         </div>
       )}
 
-      {/* Filtros */}
-      <div className="card filter-card">
-        <div className="filter-row">
-          <div className="filter-item">
-            <label className="form-label">
-              <Filter size={14} /> Filtrar por Empresa
-            </label>
-            <select
-              className="form-control"
-              value={filtroEmpresaId}
-              onChange={(e) => setFiltroEmpresaId(e.target.value)}
-            >
-              <option value="">Todas as empresas</option>
-              {empresas.map((emp) => (
-                <option key={emp.id} value={emp.id}>
-                  {emp.nomeFantasia || emp.razaoSocial}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="filter-item">
-            <label className="form-label">Filtrar por Perfil</label>
-            <select
-              className="form-control"
-              value={filtroPerfil}
-              onChange={(e) => setFiltroPerfil(e.target.value)}
-            >
-              <option value="">Todos os perfis</option>
-              {Object.entries(PERFIL_LABELS).map(([k, label]) => (
-                <option key={k} value={k}>
-                  {label}
-                </option>
-              ))}
-            </select>
+      {/* Filtros (apenas Conta Principal da Empresa possui múltiplos perfis operacionais) */}
+      {isCompanyAdmin && (
+        <div className="card filter-card">
+          <div className="filter-row">
+            <div className="filter-item">
+              <label className="form-label">
+                <Filter size={14} /> Filtrar por Perfil da Empresa
+              </label>
+              <select
+                className="form-control"
+                value={filtroPerfil}
+                onChange={(e) => setFiltroPerfil(e.target.value)}
+              >
+                <option value="">Todos os perfis da empresa</option>
+                {PERFIS_EMPRESA_FILTRO.map((k) => (
+                  <option key={k} value={k}>
+                    {PERFIL_LABELS[k] || k}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       {/* Tabela */}
       <div className="card">
@@ -359,8 +392,16 @@ export function UsuariosPage() {
           columns={columns}
           data={usuarios}
           loading={loading}
-          emptyTitle="Nenhum usuário encontrado"
-          emptyDescription="Tente ajustar os filtros ou cadastre um novo usuário."
+          emptyTitle={
+            isGlobalAdmin
+              ? 'Nenhum administrador de T.I. encontrado'
+              : 'Nenhum usuário da empresa encontrado'
+          }
+          emptyDescription={
+            isGlobalAdmin
+              ? 'Cadastre outros Administradores (T.I.) quando necessário.'
+              : 'Cadastre contas de RH, Médico do Trabalho ou Especialista SST para sua empresa.'
+          }
         />
       </div>
 
@@ -368,7 +409,15 @@ export function UsuariosPage() {
       <Modal
         isOpen={modalOpen}
         onClose={() => setModalOpen(false)}
-        title={editingUser ? 'Editar Usuário' : 'Novo Usuário'}
+        title={
+          isGlobalAdmin
+            ? editingUser
+              ? 'Editar Administrador (T.I.)'
+              : 'Novo Administrador (T.I.)'
+            : editingUser
+              ? 'Editar Usuário da Empresa'
+              : 'Novo Usuário da Empresa'
+        }
         footer={
           <>
             <button
@@ -380,7 +429,13 @@ export function UsuariosPage() {
               Cancelar
             </button>
             <button type="submit" form="user-form" className="btn btn-primary" disabled={saving}>
-              {saving ? 'Salvando...' : editingUser ? 'Salvar Alterações' : 'Criar Usuário'}
+              {saving
+                ? 'Salvando...'
+                : editingUser
+                  ? 'Salvar Alterações'
+                  : isGlobalAdmin
+                    ? 'Criar Administrador'
+                    : 'Criar Usuário'}
             </button>
           </>
         }
@@ -419,35 +474,76 @@ export function UsuariosPage() {
             />
           </FormField>
 
-          <FormField label="Perfil de Acesso" required error={fieldErrors.perfil}>
-            <select
-              className="form-control"
-              value={form.perfil}
-              onChange={(e) => setForm({ ...form, perfil: e.target.value })}
+          {isGlobalAdmin ? (
+            <FormField
+              label="Perfil de Acesso"
+              hint="Contas criadas pela T.I. possuem exclusivamente o perfil de Administrador (T.I.), sem acesso a dados operacionais de empresas."
             >
-              {Object.entries(PERFIL_LABELS).map(([k, label]) => (
-                <option key={k} value={k}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </FormField>
-
-          {requiresEmpresa && (
-            <FormField label="Empresa Vinculada" required error={fieldErrors.empresaId}>
+              <div
+                className="form-control"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  backgroundColor: 'var(--bg-muted, #f8fafc)',
+                }}
+              >
+                <ShieldCheck size={16} />
+                <span>{PERFIL_LABELS.ADMINISTRADOR}</span>
+              </div>
+            </FormField>
+          ) : isEditingMainCompanyAccount ? (
+            <FormField
+              label="Perfil de Acesso"
+              hint="O perfil da Conta Principal da Empresa não pode ser alterado."
+            >
+              <div
+                className="form-control"
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  backgroundColor: 'var(--bg-muted, #f8fafc)',
+                }}
+              >
+                <ShieldCheck size={16} />
+                <span>{PERFIL_LABELS.ADMIN_EMPRESA}</span>
+              </div>
+            </FormField>
+          ) : (
+            <FormField
+              label="Perfil Operacional na Empresa"
+              required
+              error={fieldErrors.perfil}
+              hint="Somente estes perfis operacionais acessam os dados de SST da sua empresa."
+            >
               <select
                 className="form-control"
-                value={form.empresaId}
-                onChange={(e) => setForm({ ...form, empresaId: e.target.value })}
-                required
+                value={form.perfil}
+                onChange={(e) => setForm({ ...form, perfil: e.target.value })}
               >
-                <option value="">-- Selecione a empresa --</option>
-                {empresas.map((emp) => (
-                  <option key={emp.id} value={emp.id}>
-                    {emp.nomeFantasia || emp.razaoSocial}
+                {PERFIS_OPERACIONAIS_EMPRESA.map((k) => (
+                  <option key={k} value={k}>
+                    {PERFIL_LABELS[k] || k}
                   </option>
                 ))}
               </select>
+            </FormField>
+          )}
+
+          {requiresEmpresa && (
+            <FormField
+              label="Empresa Vinculada"
+              error={fieldErrors.empresaId}
+              hint="Vínculo exclusivo e automático à sua empresa."
+            >
+              <input
+                type="text"
+                className="form-control"
+                value={user?.empresaNome || `Empresa #${user?.empresaId || ''}`}
+                disabled
+                readOnly
+              />
             </FormField>
           )}
 

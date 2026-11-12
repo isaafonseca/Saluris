@@ -51,10 +51,27 @@ public class SchemaInitializer implements ApplicationRunner {
                 executarScript(conn, "db/02_seed.sql");
                 executarScript(conn, "db/03_nr_seed.sql");
                 log.info("Banco de dados inicializado com sucesso.");
-            } else if (contarRegistros(conn, "nr_trechos") == 0) {
-                log.info("Populando base de conhecimento de NRs (03_nr_seed.sql)...");
-                executarScript(conn, "db/03_nr_seed.sql");
+            } else {
+                garantirConstraintPerfilUsuarios(conn);
+                if (contarRegistros(conn, "nr_trechos") == 0) {
+                    log.info("Populando base de conhecimento de NRs (03_nr_seed.sql)...");
+                    executarScript(conn, "db/03_nr_seed.sql");
+                }
             }
+        }
+    }
+
+    private void garantirConstraintPerfilUsuarios(Connection conn) throws SQLException {
+        if (!tabelaExiste(conn, "usuarios")) {
+            return;
+        }
+        try (Statement st = conn.createStatement()) {
+            st.execute("""
+                    ALTER TABLE usuarios DROP CONSTRAINT IF EXISTS ck_usuarios_perfil;
+                    ALTER TABLE usuarios ADD CONSTRAINT ck_usuarios_perfil CHECK (
+                        perfil IN ('ADMINISTRADOR', 'ADMIN_EMPRESA', 'ESPECIALISTA_SST', 'MEDICO_TRABALHO', 'RH_EMPRESA')
+                    );
+                    """);
         }
     }
 

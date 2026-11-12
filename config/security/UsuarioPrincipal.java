@@ -40,6 +40,10 @@ public class UsuarioPrincipal implements UserDetails {
         return perfil == Perfil.ADMINISTRADOR;
     }
 
+    public boolean isAdminEmpresa() {
+        return perfil == Perfil.ADMIN_EMPRESA;
+    }
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority(perfil.role()));

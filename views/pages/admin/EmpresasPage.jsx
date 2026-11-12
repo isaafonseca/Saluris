@@ -1,5 +1,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Building2, Plus, Edit3, Power, AlertCircle } from 'lucide-react';
+import {
+  Building2,
+  Plus,
+  Edit3,
+  Power,
+  AlertCircle,
+  KeyRound,
+  Copy,
+  Check,
+  Info,
+  ShieldCheck,
+} from 'lucide-react';
 import { api } from '../../api/client';
 import { useToast } from '../../context/ToastContext';
 import { useEmpresa } from '../../context/EmpresaContext';
@@ -32,10 +43,14 @@ export function EmpresasPage() {
     contatoNome: '',
     emailContato: '',
     telefone: '',
+    adminEmail: '',
+    adminNome: '',
   });
   const [fieldErrors, setFieldErrors] = useState({});
   const [errorMsg, setErrorMsg] = useState('');
   const [saving, setSaving] = useState(false);
+  const [createdAdminInfo, setCreatedAdminInfo] = useState(null);
+  const [copied, setCopied] = useState(false);
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -64,6 +79,8 @@ export function EmpresasPage() {
       contatoNome: '',
       emailContato: '',
       telefone: '',
+      adminEmail: '',
+      adminNome: '',
     });
     setFieldErrors({});
     setErrorMsg('');
@@ -81,10 +98,20 @@ export function EmpresasPage() {
       contatoNome: emp.contatoNome || '',
       emailContato: emp.emailContato || '',
       telefone: formatPhone(emp.telefone || ''),
+      adminEmail: emp.adminEmail || '',
+      adminNome: emp.adminNome || '',
     });
     setFieldErrors({});
     setErrorMsg('');
     setModalOpen(true);
+  };
+
+  const copyTempPassword = () => {
+    if (createdAdminInfo?.senhaTemporaria) {
+      navigator.clipboard?.writeText(createdAdminInfo.senhaTemporaria);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const handleSave = async (e) => {
@@ -92,8 +119,15 @@ export function EmpresasPage() {
     setFieldErrors({});
     setErrorMsg('');
 
+    const errs = {};
     if (!isValidCNPJ(form.cnpj)) {
-      setFieldErrors({ cnpj: 'Informe um CNPJ válido com 14 dígitos.' });
+      errs.cnpj = 'Informe um CNPJ válido com 14 dígitos.';
+    }
+    if (!editing && !form.adminEmail.trim()) {
+      errs.adminEmail = 'Informe o e-mail da Conta Principal da Empresa.';
+    }
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
       return;
     }
 
@@ -110,12 +144,26 @@ export function EmpresasPage() {
         telefone: form.telefone.trim() || null,
       };
 
+      if (!editing) {
+        payload.adminEmail = form.adminEmail.trim();
+        payload.adminNome = form.adminNome.trim() || null;
+      }
+
       if (editing) {
         await api.put(`/empresas/${editing.id}`, payload);
         toast.success('Empresa atualizada com sucesso.');
       } else {
-        await api.post('/empresas', payload);
-        toast.success('Empresa cadastrada com sucesso.');
+        const res = await api.post('/empresas', payload);
+        toast.success('Empresa cadastrada e Conta Principal vinculada com sucesso.');
+        if (res?.adminSenhaTemporaria) {
+          setCreatedAdminInfo({
+            empresa: res.nomeFantasia || res.razaoSocial || payload.razaoSocial,
+            nome: res.adminNome || form.adminNome.trim() || 'Administrador da Empresa',
+            email: res.adminEmail || form.adminEmail.trim(),
+            senhaTemporaria: res.adminSenhaTemporaria,
+          });
+          setCopied(false);
+        }
       }
       setModalOpen(false);
       loadList();
@@ -175,6 +223,18 @@ export function EmpresasPage() {
       ),
     },
     {
+      header: 'Conta Principal (Admin)',
+      render: (e) =>
+        e.adminEmail ? (
+          <div>
+            <div style={{ fontWeight: 500 }}>{e.adminNome || 'Conta Principal da Empresa'}</div>
+            <div className="text-xs text-muted">{e.adminEmail}</div>
+          </div>
+        ) : (
+          <span className="badge badge-warning">Sem vínculo</span>
+        ),
+    },
+    {
       header: 'Status',
       render: (e) => (
         <Badge variant={e.ativa ? 'success' : 'danger'}>
@@ -207,13 +267,52 @@ export function EmpresasPage() {
         <div>
           <h2>Empresas Clientes</h2>
           <p className="page-subtitle">
-            Gerencie as empresas atendidas pela plataforma de Saúde e Segurança do Trabalho.
+            Cadastre e verifique empresas clientes. Cada empresa é obrigatoriamente vinculada a um e-mail de Conta Principal da Empresa.
           </p>
         </div>
         <button type="button" className="btn btn-primary" onClick={openCreate}>
           <Plus size={18} /> Nova Empresa
         </button>
       </div>
+
+      <div className="alert alert-info" style={{ marginBottom: '1rem' }}>
+        <Info size={18} style={{ flexShrink: 0, marginTop: 2 }} />
+        <div>
+          <strong>Separação de responsabilidades:</strong> a T.I. (Administrador Global) cadastra empresas vinculando um e-mail de{' '}
+          <strong>Conta Principal da Empresa</strong> e gerencia apenas outros administradores de T.I. Os usuários internos da empresa (
+          <strong>RH</strong>, <strong>Médico do Trabalho</strong> e <strong>Especialista SST</strong>) são criados exclusivamente pela{' '}
+          <strong>Conta Principal da Empresa</strong>, e apenas esses perfis operacionais têm acesso aos dados de SST da empresa.
+        </div>
+      </div>
+
+      {createdAdminInfo && (
+        <div className="temp-password-banner">
+          <div className="temp-password-content">
+            <div className="temp-password-header">
+              <KeyRound size={20} />
+              <strong>Conta Principal da Empresa — Credencial Temporária Gerada</strong>
+            </div>
+            <p>
+              Empresa: <strong>{createdAdminInfo.empresa}</strong> ({createdAdminInfo.nome} &mdash;{' '}
+              <code>{createdAdminInfo.email}</code>). Compartilhe a senha temporária com o responsável; ela também foi enfileirada por e-mail e deverá ser alterada no primeiro login.
+            </p>
+            <div className="temp-password-box">
+              <code>{createdAdminInfo.senhaTemporaria}</code>
+              <button type="button" className="btn btn-primary btn-sm" onClick={copyTempPassword}>
+                {copied ? <Check size={16} /> : <Copy size={16} />}
+                {copied ? 'Copiado!' : 'Copiar Senha'}
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="btn btn-secondary btn-sm"
+            onClick={() => setCreatedAdminInfo(null)}
+          >
+            Fechar aviso
+          </button>
+        </div>
+      )}
 
       <div className="card">
         <Table
@@ -341,6 +440,83 @@ export function EmpresasPage() {
                 onChange={(e) => setForm({ ...form, telefone: formatPhone(e.target.value) })}
               />
             </FormField>
+          </div>
+
+          <div
+            style={{
+              marginTop: '1.25rem',
+              paddingTop: '1rem',
+              borderTop: '1px solid var(--border-color, #e2e8f0)',
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                fontWeight: 600,
+                marginBottom: '0.5rem',
+              }}
+            >
+              <ShieldCheck size={18} />
+              <span>Conta Principal da Empresa (Administrador Vinculado)</span>
+            </div>
+
+            {editing ? (
+              <div className="alert alert-info" style={{ marginBottom: 0 }}>
+                <Info size={16} style={{ flexShrink: 0, marginTop: 2 }} />
+                <div>
+                  <strong>E-mail vinculado:</strong>{' '}
+                  {form.adminEmail ? (
+                    <>
+                      <code>{form.adminEmail}</code>
+                      {form.adminNome ? ` (${form.adminNome})` : ''}
+                    </>
+                  ) : (
+                    'Nenhum e-mail vinculado'
+                  )}
+                  <div className="text-xs" style={{ marginTop: 4 }}>
+                    Somente esta Conta Principal cria e gerencia os usuários internos da empresa (RH, Médico do Trabalho e Especialista SST).
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <>
+                <p className="text-xs text-muted" style={{ marginBottom: '0.75rem' }}>
+                  Ao cadastrar a empresa, será criada automaticamente a Conta Principal (perfil Conta Principal da Empresa) vinculada a este e-mail. Somente ela poderá criar os usuários de RH, Médico do Trabalho e Especialista SST da empresa.
+                </p>
+                <div className="form-row">
+                  <FormField
+                    label="E-mail da Conta Principal"
+                    required
+                    error={fieldErrors.adminEmail}
+                    hint="Receberá a senha temporária de acesso principal da empresa."
+                  >
+                    <input
+                      type="email"
+                      className="form-control"
+                      placeholder="admin@empresa.com.br"
+                      value={form.adminEmail}
+                      onChange={(e) => setForm({ ...form, adminEmail: e.target.value })}
+                      required
+                    />
+                  </FormField>
+
+                  <FormField
+                    label="Nome do Responsável (Conta Principal)"
+                    error={fieldErrors.adminNome}
+                  >
+                    <input
+                      type="text"
+                      className="form-control"
+                      placeholder="Ex: Maria Oliveira"
+                      value={form.adminNome}
+                      onChange={(e) => setForm({ ...form, adminNome: e.target.value })}
+                    />
+                  </FormField>
+                </div>
+              </>
+            )}
           </div>
         </form>
       </Modal>

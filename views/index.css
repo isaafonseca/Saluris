@@ -1218,6 +1218,12 @@ a {
   border: 1px solid #fde68a;
 }
 
+.alert-info {
+  background-color: var(--info-bg);
+  color: var(--info-text);
+  border: 1px solid #bae6fd;
+}
+
 .temp-password-banner {
   background-color: var(--success-bg);
   border: 2px solid var(--success);

@@ -87,11 +87,11 @@ export default function App() {
         >
           <Route path="/" element={<HomeRedirect />} />
 
-          {/* Admin */}
+          {/* Admin T.I. e Conta Principal da Empresa */}
           <Route
             path="/usuarios"
             element={
-              <ProtectedRoute allowedRoles={['ADMINISTRADOR']}>
+              <ProtectedRoute allowedRoles={['ADMINISTRADOR', 'ADMIN_EMPRESA']}>
                 <UsuariosPage />
               </ProtectedRoute>
             }

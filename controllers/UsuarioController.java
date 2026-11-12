@@ -23,7 +23,7 @@ import jakarta.validation.constraints.NotNull;
 
 @RestController
 @RequestMapping("/api/usuarios")
-@PreAuthorize(Perfis.ADMIN)
+@PreAuthorize(Perfis.GERENCIAR_USUARIOS)
 public class UsuarioController {
 
     public record AtivoRequest(@NotNull Boolean ativo) {

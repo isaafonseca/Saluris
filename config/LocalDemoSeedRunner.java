@@ -146,8 +146,20 @@ public class LocalDemoSeedRunner implements ApplicationRunner {
         if (empresaRepository.findByCnpj("11222333000181").isEmpty()
                 && usuarioRepository.findByEmailIgnoreCase("especialista@saluris.com.br").isEmpty()) {
             seedBaseDemoData();
+        } else {
+            garantirAdminEmpresaDemo();
         }
         seedComplementarSeVazio();
+    }
+
+    private void garantirAdminEmpresaDemo() {
+        empresaRepository.findByCnpj("11222333000181").ifPresent(emp -> {
+            if (usuarioRepository.findByEmailIgnoreCase("empresa@saluris.com.br").isEmpty()) {
+                String hash = passwordEncoder.encode(SENHA_PADRAO);
+                criarUsuario("Mariana Costa (Conta Principal PortoLog)", "empresa@saluris.com.br",
+                        hash, Perfil.ADMIN_EMPRESA, emp.getId(), null, null);
+            }
+        });
     }
 
     private void seedBaseDemoData() {
@@ -166,6 +178,8 @@ public class LocalDemoSeedRunner implements ApplicationRunner {
         emp.setAtiva(true);
         emp = empresaRepository.save(emp);
 
+        criarUsuario("Mariana Costa (Conta Principal PortoLog)", "empresa@saluris.com.br",
+                hash, Perfil.ADMIN_EMPRESA, emp.getId(), null, null);
         Usuario especialista = criarUsuario("Carlos Eduardo (Especialista SST)", "especialista@saluris.com.br",
                 hash, Perfil.ESPECIALISTA_SST, emp.getId(), null, null);
         Usuario medico = criarUsuario("Dra. Helena Prado (Médica do Trabalho)", "medico@saluris.com.br",
@@ -283,7 +297,7 @@ public class LocalDemoSeedRunner implements ApplicationRunner {
         }
         LocalDate hoje = LocalDate.now();
         List<Usuario> usuarios = usuarioRepository.findAll().stream()
-                .filter(u -> emp.getId().equals(u.getEmpresaId()))
+                .filter(u -> emp.getId().equals(u.getEmpresaId()) && u.getPerfil().isOperacionalEmpresa())
                 .toList();
         if (usuarios.isEmpty()) {
             return;
@@ -403,7 +417,8 @@ public class LocalDemoSeedRunner implements ApplicationRunner {
             List<Laudo> laudos = laudoRepository.findAll();
 
             for (Usuario u : usuarios) {
-                if (u.getEmpresaId() == null || !u.getEmpresaId().equals(emp.getId())) {
+                if (u.getEmpresaId() == null || !u.getEmpresaId().equals(emp.getId())
+                        || !u.getPerfil().isOperacionalEmpresa()) {
                     continue;
                 }
                 Long empId = u.getEmpresaId();
@@ -447,7 +462,8 @@ public class LocalDemoSeedRunner implements ApplicationRunner {
 
         if (iaConversaRepository.count() == 0) {
             for (Usuario u : usuarios) {
-                if (u.getEmpresaId() == null || !u.getEmpresaId().equals(emp.getId())) {
+                if (u.getEmpresaId() == null || !u.getEmpresaId().equals(emp.getId())
+                        || !u.getPerfil().isOperacionalEmpresa()) {
                     continue;
                 }
                 Long empId = u.getEmpresaId();

@@ -6,7 +6,8 @@ import { getHomeRouteForPerfil } from '../utils/formatters';
 import { FormField } from '../components/ui/Common';
 
 const DEMO_ACCOUNTS = [
-  { label: 'Administrador (T.I.)', email: 'admin@saluris.com.br' },
+  { label: 'Admin (T.I.)', email: 'admin@saluris.com.br' },
+  { label: 'Conta Principal Empresa', email: 'empresa@saluris.com.br' },
   { label: 'Especialista SST', email: 'especialista@saluris.com.br' },
   { label: 'Médico do Trabalho', email: 'medico@saluris.com.br' },
   { label: 'RH / Empresa', email: 'rh@saluris.com.br' },

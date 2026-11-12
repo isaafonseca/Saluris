@@ -7,6 +7,8 @@ package br.com.saluris.security;
 public final class Perfis {
 
     public static final String ADMIN = "hasRole('ADMINISTRADOR')";
+    public static final String ADMIN_EMPRESA = "hasRole('ADMIN_EMPRESA')";
+    public static final String GERENCIAR_USUARIOS = "hasAnyRole('ADMINISTRADOR','ADMIN_EMPRESA')";
     public static final String ESPECIALISTA = "hasRole('ESPECIALISTA_SST')";
     public static final String MEDICO = "hasRole('MEDICO_TRABALHO')";
     public static final String RH = "hasRole('RH_EMPRESA')";

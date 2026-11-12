@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -37,13 +38,13 @@ import br.com.saluris.service.NotificacaoService.NotificacaoResponse;
 import br.com.saluris.shared.dto.PageResponse;
 
 /**
- * Gera e controla notificações de configurações e possíveis problemas do sistema
- * exclusivas para o perfil Administrador (T.I.), sem expor dados/alertas operacionais de empresas.
+ * Gera e controla notificações de configurações e problemas sem expor dados operacionais de SST
+ * nem cruzar informações exclusivas entre Administrador (T.I.) e Conta Principal da Empresa.
  */
 @Service
 public class AdminSistemaNotificacaoService {
 
-    private record AdminAlertaDefinicao(
+    private record AlertaDefinicao(
             long id,
             String chave,
             TipoNotificacao tipo,
@@ -88,77 +89,154 @@ public class AdminSistemaNotificacaoService {
         this.smtpHost = smtpHost;
     }
 
-    public PageResponse<NotificacaoResponse> listar(Long usuarioId, Pageable pageable) {
-        List<NotificacaoResponse> todas = montarRespostas(usuarioId);
-        int page = pageable.isPaged() ? pageable.getPageNumber() : 0;
-        int size = pageable.isPaged() ? pageable.getPageSize() : Math.max(1, todas.size());
-        int from = Math.min(page * size, todas.size());
-        int to = Math.min(from + size, todas.size());
-        List<NotificacaoResponse> slice = todas.subList(from, to);
-        int totalPages = size == 0 ? 0 : (int) Math.ceil((double) todas.size() / size);
-        return new PageResponse<>(slice, page, size, todas.size(), totalPages);
+    // =========================================================================
+    // Administrador (T.I.): configurações globais, empresas e contas principais
+    // (não expõe usuários operacionais das empresas nem dados SST)
+    // =========================================================================
+
+    public PageResponse<NotificacaoResponse> listarParaAdminGlobal(Long usuarioId, Pageable pageable) {
+        return paginar(montarRespostas(usuarioId, gerarAlertasAdminGlobal()), pageable);
     }
 
-    public long contarNaoLidas(Long usuarioId) {
-        return montarRespostas(usuarioId).stream()
-                .filter(n -> !n.lida())
-                .count();
+    public long contarNaoLidasAdminGlobal(Long usuarioId) {
+        return contarNaoLidas(usuarioId, gerarAlertasAdminGlobal());
     }
 
-    public void marcarComoLida(Long usuarioId, Long notificacaoId) {
-        List<AdminAlertaDefinicao> alertas = gerarAlertasSistema();
-        AdminAlertaDefinicao alvo = alertas.stream()
-                .filter(a -> Objects.equals(a.id(), notificacaoId))
-                .findFirst()
-                .orElseThrow(() -> new RecursoNaoEncontradoException("Notificação não encontrada."));
-        registrarChaveLida(usuarioId, alvo.chave());
+    public void marcarComoLidaAdminGlobal(Long usuarioId, Long notificacaoId) {
+        marcarComoLida(usuarioId, notificacaoId, gerarAlertasAdminGlobal());
     }
 
-    public int marcarTodasComoLidas(Long usuarioId) {
-        Set<String> jaLidas = carregarChavesLidas(usuarioId);
-        int marcadas = 0;
-        for (AdminAlertaDefinicao alerta : gerarAlertasSistema()) {
-            if (!jaLidas.contains(alerta.chave())) {
-                registrarChaveLida(usuarioId, alerta.chave());
-                marcadas++;
-            }
-        }
-        return marcadas;
+    public int marcarTodasComoLidasAdminGlobal(Long usuarioId) {
+        return marcarTodasComoLidas(usuarioId, gerarAlertasAdminGlobal());
     }
 
-    private List<NotificacaoResponse> montarRespostas(Long usuarioId) {
-        Set<String> chavesLidas = carregarChavesLidas(usuarioId);
-        return gerarAlertasSistema().stream()
-                .map(a -> new NotificacaoResponse(
-                        a.id(),
-                        a.tipo(),
-                        a.titulo(),
-                        a.mensagem(),
-                        null,
-                        chavesLidas.contains(a.chave()),
-                        a.criadoEm(),
-                        null,
-                        null,
-                        null,
-                        null))
-                .toList();
+    // =========================================================================
+    // Conta Principal da Empresa (ADMIN_EMPRESA): usuários da própria empresa
+    // (não expõe exames, documentos, laudos ou colaboradores)
+    // =========================================================================
+
+    public PageResponse<NotificacaoResponse> listarParaEmpresaAdmin(Long empresaId, Long usuarioId, Pageable pageable) {
+        return paginar(montarRespostas(usuarioId, gerarAlertasEmpresaAdmin(empresaId)), pageable);
     }
 
-    private List<AdminAlertaDefinicao> gerarAlertasSistema() {
-        List<AdminAlertaDefinicao> alertas = new ArrayList<>();
+    public long contarNaoLidasEmpresaAdmin(Long empresaId, Long usuarioId) {
+        return contarNaoLidas(usuarioId, gerarAlertasEmpresaAdmin(empresaId));
+    }
+
+    public void marcarComoLidaEmpresaAdmin(Long empresaId, Long usuarioId, Long notificacaoId) {
+        marcarComoLida(usuarioId, notificacaoId, gerarAlertasEmpresaAdmin(empresaId));
+    }
+
+    public int marcarTodasComoLidasEmpresaAdmin(Long empresaId, Long usuarioId) {
+        return marcarTodasComoLidas(usuarioId, gerarAlertasEmpresaAdmin(empresaId));
+    }
+
+    // =========================================================================
+    // Geração de alertas por escopo
+    // =========================================================================
+
+    private List<AlertaDefinicao> gerarAlertasAdminGlobal() {
+        List<AlertaDefinicao> alertas = new ArrayList<>();
         OffsetDateTime agora = OffsetDateTime.now();
 
-        adicionarAlertasEmail(alertas);
-        adicionarAlertasEmpresasEContas(alertas, agora);
-        adicionarAlertasConfiguracoes(alertas, agora);
+        adicionarAlertasEmailGlobais(alertas);
+        adicionarAlertasEmpresasEContasPrincipais(alertas, agora);
+        adicionarAlertasConfiguracoesGlobais(alertas, agora);
 
-        alertas.sort(Comparator
-                .comparing((AdminAlertaDefinicao a) -> a.tipo() == TipoNotificacao.URGENCIA ? 0 : 1)
-                .thenComparing(AdminAlertaDefinicao::criadoEm, Comparator.reverseOrder()));
+        ordenar(alertas);
         return alertas;
     }
 
-    private void adicionarAlertasEmail(List<AdminAlertaDefinicao> alertas) {
+    private List<AlertaDefinicao> gerarAlertasEmpresaAdmin(Long empresaId) {
+        List<AlertaDefinicao> alertas = new ArrayList<>();
+        OffsetDateTime agora = OffsetDateTime.now();
+
+        List<Usuario> usuariosEmpresa = usuarioRepository.filtrar(empresaId, null).stream()
+                .filter(u -> u.getPerfil() != Perfil.ADMINISTRADOR)
+                .toList();
+
+        List<Usuario> operacionaisAtivos = usuariosEmpresa.stream()
+                .filter(u -> u.isAtivo() && u.getPerfil().isOperacionalEmpresa())
+                .toList();
+
+        List<String> perfisFaltantes = new ArrayList<>();
+        if (operacionaisAtivos.stream().noneMatch(u -> u.getPerfil() == Perfil.RH_EMPRESA)) {
+            perfisFaltantes.add("RH / Empresa");
+        }
+        if (operacionaisAtivos.stream().noneMatch(u -> u.getPerfil() == Perfil.MEDICO_TRABALHO)) {
+            perfisFaltantes.add("Médico do Trabalho");
+        }
+        if (operacionaisAtivos.stream().noneMatch(u -> u.getPerfil() == Perfil.ESPECIALISTA_SST)) {
+            perfisFaltantes.add("Especialista SST");
+        }
+        if (!perfisFaltantes.isEmpty()) {
+            alertas.add(criarAlerta(
+                    "empresa_perfis_pendentes_" + empresaId + "_" + perfisFaltantes.size(),
+                    TipoNotificacao.URGENCIA,
+                    "Contas da Empresa: Perfis operacionais pendentes de criação",
+                    "Sua empresa ainda não possui conta ativa para: " + String.join(", ", perfisFaltantes)
+                            + ". Os dados de SST da empresa ficam acessíveis apenas aos usuários cadastrados pela Conta Principal.",
+                    agora));
+        }
+
+        List<Usuario> trocaPendente = usuariosEmpresa.stream()
+                .filter(u -> u.isAtivo() && u.getPerfil().isOperacionalEmpresa() && u.isDeveTrocarSenha())
+                .toList();
+        if (!trocaPendente.isEmpty()) {
+            String emails = trocaPendente.stream()
+                    .limit(3)
+                    .map(Usuario::getEmail)
+                    .collect(Collectors.joining(", "));
+            if (trocaPendente.size() > 3) {
+                emails += " e mais " + (trocaPendente.size() - 3);
+            }
+            alertas.add(criarAlerta(
+                    "empresa_usuarios_troca_senha_" + empresaId + "_" + trocaPendente.size(),
+                    TipoNotificacao.PREVENTIVO,
+                    "Primeiro Acesso Pendente: " + trocaPendente.size() + " usuário(s) da empresa",
+                    "As contas abaixo ainda não concluíram a definição da senha definitiva: " + emails
+                            + ". Caso necessário, redefina a senha na tela Usuários da Empresa.",
+                    agora));
+
+            if (smtpHost == null || smtpHost.isBlank()) {
+                alertas.add(criarAlerta(
+                        "empresa_smtp_desativado_" + empresaId,
+                        TipoNotificacao.PREVENTIVO,
+                        "Aviso de Credenciais: E-mail automático desativado no servidor",
+                        "Como o servidor não está enviando e-mails externos, compartilhe manualmente a senha temporária ao criar ou redefinir usuários.",
+                        agora));
+            }
+        }
+
+        Set<String> emailsEmpresa = usuariosEmpresa.stream()
+                .map(u -> u.getEmail().trim().toLowerCase(Locale.ROOT))
+                .collect(Collectors.toSet());
+
+        List<EnvioEmail> enviosComErro = envioEmailRepository.findAll().stream()
+                .filter(e -> e.getDestinatario() != null
+                        && emailsEmpresa.contains(e.getDestinatario().trim().toLowerCase(Locale.ROOT))
+                        && (e.getStatus() == StatusEnvioEmail.FALHA_DEFINITIVA
+                                || (e.getStatus() == StatusEnvioEmail.PENDENTE
+                                        && e.getTentativas() != null && e.getTentativas() > 0
+                                        && e.getUltimoErro() != null && !e.getUltimoErro().isBlank())))
+                .sorted(Comparator.comparing(EnvioEmail::getId, Comparator.reverseOrder()))
+                .toList();
+        if (!enviosComErro.isEmpty()) {
+            EnvioEmail ultimo = enviosComErro.get(0);
+            alertas.add(criarAlerta(
+                    "empresa_email_erro_" + empresaId + "_" + ultimo.getId(),
+                    TipoNotificacao.URGENCIA,
+                    "Problema de Envio: Falha ao entregar credenciais para usuário da empresa (" + enviosComErro.size() + ")",
+                    "Último destinatário afetado: " + ultimo.getDestinatario()
+                            + ". Motivo: " + resumir(ultimo.getUltimoErro(), "Erro de servidor SMTP."),
+                    dataSegura(ultimo.getAtualizadoEm(), ultimo.getCriadoEm())));
+        }
+
+        ordenar(alertas);
+        return alertas;
+    }
+
+    private void adicionarAlertasEmailGlobais(List<AlertaDefinicao> alertas) {
         List<EnvioEmail> envios = envioEmailRepository.findAll();
 
         List<EnvioEmail> falhasDefinitivas = envios.stream()
@@ -171,9 +249,8 @@ public class AdminSistemaNotificacaoService {
             alertas.add(criarAlerta(
                     "email_falha_definitiva_" + ultimo.getId(),
                     TipoNotificacao.URGENCIA,
-                    "Problema de Envio: Falha definitiva em e-mails (" + falhasDefinitivas.size() + ")",
-                    falhasDefinitivas.size() + " e-mail(s) atingiram o limite máximo de tentativas. Último destinatário: "
-                            + ultimo.getDestinatario() + ". Motivo: " + erro,
+                    "Problema de Envio: Falha definitiva em e-mails do sistema (" + falhasDefinitivas.size() + ")",
+                    falhasDefinitivas.size() + " e-mail(s) atingiram o limite de tentativas de entrega. Verifique a configuração SMTP. Motivo: " + erro,
                     dataSegura(ultimo.getAtualizadoEm(), ultimo.getCriadoEm())));
         }
 
@@ -190,30 +267,30 @@ public class AdminSistemaNotificacaoService {
                     "email_falha_temporaria_" + ultimo.getId(),
                     TipoNotificacao.URGENCIA,
                     "Problema de Envio: E-mails aguardando reenvio (" + falhasTemporarias.size() + ")",
-                    falhasTemporarias.size() + " envio(s) falharam na tentativa inicial e estão em fila de retry. Erro: " + erro,
+                    falhasTemporarias.size() + " envio(s) estão em fila de reenvio por falha SMTP. Erro: " + erro,
                     dataSegura(ultimo.getAtualizadoEm(), ultimo.getCriadoEm())));
         }
     }
 
-    private void adicionarAlertasEmpresasEContas(List<AdminAlertaDefinicao> alertas, OffsetDateTime agora) {
+    private void adicionarAlertasEmpresasEContasPrincipais(List<AlertaDefinicao> alertas, OffsetDateTime agora) {
         List<Empresa> empresas = empresaRepository.findAll();
-        List<Usuario> usuarios = usuarioRepository.findAll();
-
-        Map<Long, List<Usuario>> usuariosAtivosPorEmpresa = usuarios.stream()
-                .filter(u -> u.isAtivo() && u.getEmpresaId() != null)
-                .collect(Collectors.groupingBy(Usuario::getEmpresaId));
+        Map<Long, Usuario> adminPrincipalPorEmpresa = usuarioRepository.findByPerfil(Perfil.ADMIN_EMPRESA).stream()
+                .filter(u -> u.getEmpresaId() != null)
+                .collect(Collectors.toMap(Usuario::getEmpresaId, u -> u, (a, b) -> a));
 
         for (Empresa emp : empresas) {
-            if (emp.isAtiva() && usuariosAtivosPorEmpresa.getOrDefault(emp.getId(), List.of()).isEmpty()) {
-                String nome = emp.getNomeFantasia() != null && !emp.getNomeFantasia().isBlank()
-                        ? emp.getNomeFantasia()
-                        : emp.getRazaoSocial();
+            if (!emp.isAtiva()) {
+                continue;
+            }
+            Usuario adminPrincipal = adminPrincipalPorEmpresa.get(emp.getId());
+            String nome = nomeEmpresa(emp);
+            if (adminPrincipal == null || !adminPrincipal.isAtivo()) {
                 alertas.add(criarAlerta(
-                        "empresa_sem_usuarios_" + emp.getId(),
+                        "empresa_sem_admin_principal_" + emp.getId(),
                         TipoNotificacao.URGENCIA,
-                        "Conta Incompleta: Empresa sem usuários ativos (" + nome + ")",
+                        "Problema de Conta Principal: Empresa sem administrador principal ativo (" + nome + ")",
                         "A empresa " + emp.getRazaoSocial()
-                                + " está ativa, mas não possui nenhuma conta de acesso ativa vinculada. Acesse Usuários para criar os perfis.",
+                                + " não possui uma Conta Principal (ADMIN_EMPRESA) ativa vinculada para cadastrar os usuários da empresa.",
                         dataSegura(emp.getCriadoEm(), agora)));
             }
         }
@@ -222,7 +299,7 @@ public class AdminSistemaNotificacaoService {
         if (!inativas.isEmpty()) {
             String nomes = inativas.stream()
                     .limit(3)
-                    .map(e -> e.getNomeFantasia() != null ? e.getNomeFantasia() : e.getRazaoSocial())
+                    .map(AdminSistemaNotificacaoService::nomeEmpresa)
                     .collect(Collectors.joining(", "));
             if (inativas.size() > 3) {
                 nomes += " e mais " + (inativas.size() - 3);
@@ -231,39 +308,38 @@ public class AdminSistemaNotificacaoService {
                     "empresas_inativas_" + inativas.size(),
                     TipoNotificacao.PREVENTIVO,
                     "Configuração de Contas: " + inativas.size() + " empresa(s) inativa(s)",
-                    "Empresas atualmente desativadas no sistema: " + nomes
-                            + ". Verifique na tela Empresas caso alguma conta deva ser reativada.",
+                    "Empresas atualmente desativadas na plataforma: " + nomes
+                            + ". Verifique na tela Empresas caso alguma deva ser reativada.",
                     agora));
         }
 
-        List<Usuario> trocaPendente = usuarios.stream()
-                .filter(u -> u.isAtivo() && u.getPerfil() != Perfil.ADMINISTRADOR && u.isDeveTrocarSenha())
+        List<Usuario> adminsPrincipaisPendentes = adminPrincipalPorEmpresa.values().stream()
+                .filter(u -> u.isAtivo() && u.isDeveTrocarSenha())
                 .toList();
-        if (!trocaPendente.isEmpty()) {
-            String emails = trocaPendente.stream()
+        if (!adminsPrincipaisPendentes.isEmpty()) {
+            String emails = adminsPrincipaisPendentes.stream()
                     .limit(3)
                     .map(Usuario::getEmail)
                     .collect(Collectors.joining(", "));
-            if (trocaPendente.size() > 3) {
-                emails += " e mais " + (trocaPendente.size() - 3);
+            if (adminsPrincipaisPendentes.size() > 3) {
+                emails += " e mais " + (adminsPrincipaisPendentes.size() - 3);
             }
             alertas.add(criarAlerta(
-                    "usuarios_troca_senha_pendente_" + trocaPendente.size(),
+                    "admin_principal_primeiro_acesso_" + adminsPrincipaisPendentes.size(),
                     TipoNotificacao.PREVENTIVO,
-                    "Contas Pendentes: " + trocaPendente.size() + " usuário(s) aguardando primeiro acesso",
-                    "As seguintes contas ainda não concluíram a troca obrigatória de senha inicial: " + emails
-                            + ". Caso o usuário não tenha recebido a senha, redefina em Usuários.",
+                    "Onboarding de Empresas: " + adminsPrincipaisPendentes.size() + " Conta(s) Principal(is) aguardando 1º acesso",
+                    "As Contas Principais vinculadas às empresas ainda não ativaram sua senha definitiva: " + emails + ".",
                     agora));
         }
     }
 
-    private void adicionarAlertasConfiguracoes(List<AdminAlertaDefinicao> alertas, OffsetDateTime agora) {
+    private void adicionarAlertasConfiguracoesGlobais(List<AlertaDefinicao> alertas, OffsetDateTime agora) {
         if (smtpHost == null || smtpHost.isBlank()) {
             alertas.add(criarAlerta(
                     "config_smtp_ausente",
                     TipoNotificacao.PREVENTIVO,
                     "Configuração de Sistema: Servidor SMTP não configurado",
-                    "A variável SMTP_HOST não está definida. Os e-mails de boas-vindas e senhas temporárias estão sendo apenas registrados em log simulado.",
+                    "A variável SMTP_HOST não está definida. Os e-mails de credenciais de empresas e alertas estão sendo apenas registrados em log simulado.",
                     agora));
         }
 
@@ -298,6 +374,71 @@ public class AdminSistemaNotificacaoService {
                             + " estão vazios. Acesse Catálogos de SST para habilitar os itens antes do uso pelas empresas.",
                     agora));
         }
+    }
+
+    // =========================================================================
+    // Paginação e persistência de leitura
+    // =========================================================================
+
+    private List<NotificacaoResponse> montarRespostas(Long usuarioId, List<AlertaDefinicao> alertas) {
+        Set<String> chavesLidas = carregarChavesLidas(usuarioId);
+        return alertas.stream()
+                .map(a -> new NotificacaoResponse(
+                        a.id(),
+                        a.tipo(),
+                        a.titulo(),
+                        a.mensagem(),
+                        null,
+                        chavesLidas.contains(a.chave()),
+                        a.criadoEm(),
+                        null,
+                        null,
+                        null,
+                        null))
+                .toList();
+    }
+
+    private long contarNaoLidas(Long usuarioId, List<AlertaDefinicao> alertas) {
+        Set<String> chavesLidas = carregarChavesLidas(usuarioId);
+        return alertas.stream()
+                .filter(a -> !chavesLidas.contains(a.chave()))
+                .count();
+    }
+
+    private void marcarComoLida(Long usuarioId, Long notificacaoId, List<AlertaDefinicao> alertas) {
+        AlertaDefinicao alvo = alertas.stream()
+                .filter(a -> Objects.equals(a.id(), notificacaoId))
+                .findFirst()
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Notificação não encontrada."));
+        registrarChaveLida(usuarioId, alvo.chave());
+    }
+
+    private int marcarTodasComoLidas(Long usuarioId, List<AlertaDefinicao> alertas) {
+        Set<String> jaLidas = carregarChavesLidas(usuarioId);
+        int marcadas = 0;
+        for (AlertaDefinicao alerta : alertas) {
+            if (!jaLidas.contains(alerta.chave())) {
+                registrarChaveLida(usuarioId, alerta.chave());
+                marcadas++;
+            }
+        }
+        return marcadas;
+    }
+
+    private static PageResponse<NotificacaoResponse> paginar(List<NotificacaoResponse> todas, Pageable pageable) {
+        int page = pageable.isPaged() ? pageable.getPageNumber() : 0;
+        int size = pageable.isPaged() ? pageable.getPageSize() : Math.max(1, todas.size());
+        int from = Math.min(page * size, todas.size());
+        int to = Math.min(from + size, todas.size());
+        List<NotificacaoResponse> slice = todas.subList(from, to);
+        int totalPages = size == 0 ? 0 : (int) Math.ceil((double) todas.size() / size);
+        return new PageResponse<>(slice, page, size, todas.size(), totalPages);
+    }
+
+    private static void ordenar(List<AlertaDefinicao> alertas) {
+        alertas.sort(Comparator
+                .comparing((AlertaDefinicao a) -> a.tipo() == TipoNotificacao.URGENCIA ? 0 : 1)
+                .thenComparing(AlertaDefinicao::criadoEm, Comparator.reverseOrder()));
     }
 
     private Set<String> carregarChavesLidas(Long usuarioId) {
@@ -348,9 +489,9 @@ public class AdminSistemaNotificacaoService {
         }
     }
 
-    private static AdminAlertaDefinicao criarAlerta(String chave, TipoNotificacao tipo, String titulo,
+    private static AlertaDefinicao criarAlerta(String chave, TipoNotificacao tipo, String titulo,
             String mensagem, OffsetDateTime criadoEm) {
-        return new AdminAlertaDefinicao(idDeterministico(chave), chave, tipo, titulo, mensagem, criadoEm);
+        return new AlertaDefinicao(idDeterministico(chave), chave, tipo, titulo, mensagem, criadoEm);
     }
 
     private static long idDeterministico(String chave) {
@@ -361,6 +502,12 @@ public class AdminSistemaNotificacaoService {
         }
         long positivo = (hash & 0xFFFFFFFFFFL) + 1L;
         return -positivo;
+    }
+
+    private static String nomeEmpresa(Empresa emp) {
+        return emp.getNomeFantasia() != null && !emp.getNomeFantasia().isBlank()
+                ? emp.getNomeFantasia()
+                : emp.getRazaoSocial();
     }
 
     private static OffsetDateTime dataSegura(OffsetDateTime primaria, OffsetDateTime fallback) {

@@ -109,9 +109,10 @@ export function validatePdfFile(file) {
 
 export const PERFIL_LABELS = {
   ADMINISTRADOR: 'Administrador (T.I.)',
+  ADMIN_EMPRESA: 'Conta Principal da Empresa',
   ESPECIALISTA_SST: 'Especialista SST',
   MEDICO_TRABALHO: 'Médico do Trabalho',
-  RH_EMPRESA: 'RH da Empresa',
+  RH_EMPRESA: 'RH / Empresa',
 };
 
 export const PORTE_LABELS = {
@@ -160,6 +161,8 @@ export function getHomeRouteForPerfil(perfil) {
   switch (perfil) {
     case 'ADMINISTRADOR':
       return '/empresas';
+    case 'ADMIN_EMPRESA':
+      return '/usuarios';
     case 'ESPECIALISTA_SST':
     case 'RH_EMPRESA':
       return '/dashboard';

@@ -5,7 +5,8 @@ package br.com.saluris.domain.enums;
  * os demais pertencem a uma empresa e só enxergam os dados dela.
  */
 public enum Perfil {
-    ADMINISTRADOR("Administrador"),
+    ADMINISTRADOR("Administrador (T.I.)"),
+    ADMIN_EMPRESA("Conta Principal da Empresa"),
     ESPECIALISTA_SST("Especialista SST"),
     MEDICO_TRABALHO("Médico do Trabalho"),
     RH_EMPRESA("RH / Empresa");
@@ -27,5 +28,9 @@ public enum Perfil {
 
     public boolean pertenceAEmpresa() {
         return this != ADMINISTRADOR;
+    }
+
+    public boolean isOperacionalEmpresa() {
+        return this == ESPECIALISTA_SST || this == MEDICO_TRABALHO || this == RH_EMPRESA;
     }
 }

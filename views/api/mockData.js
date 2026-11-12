@@ -30,6 +30,8 @@ export const DEMO_STATE = {
       contatoNome: 'Mariana Costa',
       emailContato: 'contato@portolog.com.br',
       telefone: '(13) 3222-4500',
+      adminEmail: 'empresa@saluris.com.br',
+      adminNome: 'Conta Principal PortoLog Santos',
       ativa: true,
     },
     {
@@ -42,6 +44,8 @@ export const DEMO_STATE = {
       contatoNome: 'Roberto Figueiredo',
       emailContato: 'sst@metalurgicaatlantica.com.br',
       telefone: '(13) 3361-8800',
+      adminEmail: 'admin@metalurgicaatlantica.com.br',
+      adminNome: 'Conta Principal Metalúrgica Atlântica',
       ativa: true,
     },
     {
@@ -54,6 +58,8 @@ export const DEMO_STATE = {
       contatoNome: 'Patrícia Nogueira',
       emailContato: 'rh@construtoralitoralsul.com.br',
       telefone: '(13) 3289-1900',
+      adminEmail: 'admin@construtoralitoralsul.com.br',
+      adminNome: 'Conta Principal Construtora Litoral Sul',
       ativa: true,
     },
   ],
@@ -149,6 +155,19 @@ export const DEMO_STATE = {
       ativo: true,
       deveTrocarSenha: false,
       ultimoAcesso: isoDateTime(-1, -2),
+    },
+    {
+      id: 8,
+      nome: 'Conta Principal PortoLog (Admin da Empresa)',
+      email: 'empresa@saluris.com.br',
+      perfil: 'ADMIN_EMPRESA',
+      empresaId: 1,
+      empresaNome: 'Porto Logística e Operações Portuárias S.A.',
+      crm: null,
+      crmUf: null,
+      ativo: true,
+      deveTrocarSenha: false,
+      ultimoAcesso: isoDateTime(0, -1),
     },
   ],
 
@@ -1430,8 +1449,18 @@ export function buildDemoDashboard(params = {}) {
   };
 }
 
+function getCurrentDemoUser() {
+  try {
+    const raw = typeof localStorage !== 'undefined' ? localStorage.getItem('saluris_user') : null;
+    return raw ? JSON.parse(raw) : null;
+  } catch {
+    return null;
+  }
+}
+
 export function handleDemoRequest(method, path, body, params = {}) {
   const m = (method || 'GET').toUpperCase();
+  const currentUser = getCurrentDemoUser();
 
   // Dashboard
   if (path === '/dashboard' && m === 'GET') {
@@ -1446,9 +1475,27 @@ export function handleDemoRequest(method, path, body, params = {}) {
     const novo = {
       id: Date.now(),
       ...body,
+      adminEmail: body?.adminEmail?.trim() || '',
+      adminNome: body?.adminNome?.trim() || 'Conta Principal da Empresa',
+      adminSenhaTemporaria: 'Saluris@Emp2026',
       ativa: true,
     };
     DEMO_STATE.empresas.unshift(novo);
+    if (novo.adminEmail) {
+      DEMO_STATE.usuarios.unshift({
+        id: Date.now() + 1,
+        nome: novo.adminNome,
+        email: novo.adminEmail,
+        perfil: 'ADMIN_EMPRESA',
+        empresaId: novo.id,
+        empresaNome: novo.razaoSocial || novo.nomeFantasia,
+        crm: null,
+        crmUf: null,
+        ativo: true,
+        deveTrocarSenha: true,
+        ultimoAcesso: null,
+      });
+    }
     return novo;
   }
   if (path.startsWith('/empresas/') && m === 'PUT') {
@@ -1471,7 +1518,13 @@ export function handleDemoRequest(method, path, body, params = {}) {
   // Usuários
   if (path === '/usuarios' && m === 'GET') {
     let list = [...DEMO_STATE.usuarios];
-    if (params?.empresaId) {
+    if (currentUser?.perfil === 'ADMINISTRADOR') {
+      list = list.filter((u) => u.perfil === 'ADMINISTRADOR');
+    } else if (currentUser?.perfil === 'ADMIN_EMPRESA') {
+      list = list.filter(
+        (u) => String(u.empresaId) === String(currentUser.empresaId) && u.perfil !== 'ADMINISTRADOR'
+      );
+    } else if (params?.empresaId) {
       list = list.filter((u) => String(u.empresaId) === String(params.empresaId));
     }
     if (params?.perfil) {
@@ -1912,9 +1965,15 @@ export function handleDemoRequest(method, path, body, params = {}) {
 
   // Notificações
   if (path === '/notificacoes/nao-lidas/contagem' && m === 'GET') {
+    if (currentUser?.perfil === 'ADMINISTRADOR' || currentUser?.perfil === 'ADMIN_EMPRESA') {
+      return { total: 0 };
+    }
     return { total: DEMO_STATE.notificacoes.filter((n) => !n.lida).length };
   }
   if (path === '/notificacoes' && m === 'GET') {
+    if (currentUser?.perfil === 'ADMINISTRADOR' || currentUser?.perfil === 'ADMIN_EMPRESA') {
+      return paginate([], params);
+    }
     let list = [...DEMO_STATE.notificacoes];
     if (String(params?.somenteNaoLidas) === 'true') {
       list = list.filter((n) => !n.lida);

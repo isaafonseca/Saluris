@@ -188,7 +188,7 @@ export function AppLayout() {
         },
         {
           to: '/usuarios',
-          label: 'Usuários',
+          label: 'Administradores (T.I.)',
           icon: Users,
           roles: ['ADMINISTRADOR'],
         },
@@ -201,20 +201,31 @@ export function AppLayout() {
       ],
     },
     {
+      title: 'Conta Principal da Empresa',
+      items: [
+        {
+          to: '/usuarios',
+          label: 'Usuários da Empresa',
+          icon: Users,
+          roles: ['ADMIN_EMPRESA'],
+        },
+      ],
+    },
+    {
       title: 'Conta',
       items: [
         {
           to: '/notificacoes',
           label: 'Notificações',
           icon: Bell,
-          roles: ['ADMINISTRADOR', 'ESPECIALISTA_SST', 'MEDICO_TRABALHO', 'RH_EMPRESA'],
+          roles: ['ADMINISTRADOR', 'ADMIN_EMPRESA', 'ESPECIALISTA_SST', 'MEDICO_TRABALHO', 'RH_EMPRESA'],
           badge: unreadCount > 0 ? unreadCount : null,
         },
         {
           to: '/trocar-senha',
           label: 'Alterar Senha',
           icon: KeyRound,
-          roles: ['ADMINISTRADOR', 'ESPECIALISTA_SST', 'MEDICO_TRABALHO', 'RH_EMPRESA'],
+          roles: ['ADMINISTRADOR', 'ADMIN_EMPRESA', 'ESPECIALISTA_SST', 'MEDICO_TRABALHO', 'RH_EMPRESA'],
         },
       ],
     },
@@ -295,6 +306,7 @@ export function AppLayout() {
                 <span className="company-pill">
                   <Building2 size={15} />
                   {user.empresaNome}
+                  {user?.perfil === 'ADMIN_EMPRESA' ? ' • Conta Principal' : ''}
                 </span>
               ) : (
                 <span className="company-pill admin-pill">Administração Global (T.I.)</span>
@@ -320,7 +332,13 @@ export function AppLayout() {
               {notifOpen && (
                 <div className="notif-dropdown">
                   <div className="notif-dropdown-header">
-                    <strong>{user?.perfil === 'ADMINISTRADOR' ? 'Configurações & Problemas' : 'Notificações'}</strong>
+                    <strong>
+                      {user?.perfil === 'ADMINISTRADOR'
+                        ? 'Configurações & Problemas'
+                        : user?.perfil === 'ADMIN_EMPRESA'
+                          ? 'Contas da Empresa'
+                          : 'Notificações'}
+                    </strong>
                     {unreadCount > 0 && (
                       <button
                         type="button"
@@ -338,7 +356,9 @@ export function AppLayout() {
                       <div className="notif-empty">
                         {user?.perfil === 'ADMINISTRADOR'
                           ? 'Nenhum problema ou pendência de configuração.'
-                          : 'Nenhuma notificação recente.'}
+                          : user?.perfil === 'ADMIN_EMPRESA'
+                            ? 'Nenhuma pendência nas contas da empresa.'
+                            : 'Nenhuma notificação recente.'}
                       </div>
                     ) : (
                       recentNotifs.map((n) => (

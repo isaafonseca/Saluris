@@ -15,6 +15,17 @@ const MOCK_USERS = {
     crm: null,
     crmUf: null,
   },
+  'empresa@saluris.com.br': {
+    id: 5,
+    nome: 'Mariana Costa (Conta Principal PortoLog)',
+    email: 'empresa@saluris.com.br',
+    perfil: 'ADMIN_EMPRESA',
+    empresaId: 1,
+    empresaNome: 'PortoLog Santos',
+    deveTrocarSenha: false,
+    crm: null,
+    crmUf: null,
+  },
   'especialista@saluris.com.br': {
     id: 2,
     nome: 'Carlos Eduardo (Especialista SST)',
@@ -57,6 +68,7 @@ function resolveMockUser(email) {
   if (MOCK_USERS[normalized]) {
     return MOCK_USERS[normalized];
   }
+  if (normalized.includes('empresa')) return MOCK_USERS['empresa@saluris.com.br'];
   if (normalized.includes('espec')) return MOCK_USERS['especialista@saluris.com.br'];
   if (normalized.includes('med')) return MOCK_USERS['medico@saluris.com.br'];
   if (normalized.includes('rh')) return MOCK_USERS['rh@saluris.com.br'];
@@ -160,6 +172,7 @@ export function AuthProvider({ children }) {
         loading,
         isAuthenticated: !!user,
         isAdmin: user?.perfil === 'ADMINISTRADOR',
+        isAdminEmpresa: user?.perfil === 'ADMIN_EMPRESA',
         isEspecialista: user?.perfil === 'ESPECIALISTA_SST',
         isMedico: user?.perfil === 'MEDICO_TRABALHO',
         isRh: user?.perfil === 'RH_EMPRESA',

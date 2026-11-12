@@ -10,6 +10,8 @@ import { Loading, EmptyState, Pagination } from '../components/ui/Common';
 export function NotificacoesPage() {
   const { user } = useAuth();
   const isAdmin = user?.perfil === 'ADMINISTRADOR';
+  const isAdminEmpresa = user?.perfil === 'ADMIN_EMPRESA';
+  const isContaAlert = isAdmin || isAdminEmpresa;
   const toast = useToast();
 
   const [notificacoes, setNotificacoes] = useState([]);
@@ -68,9 +70,9 @@ export function NotificacoesPage() {
   };
 
   const getTipoLabel = (tipo) => {
-    if (!isAdmin) return tipo;
-    if (tipo === 'URGENCIA') return 'Problema';
-    if (tipo === 'PREVENTIVO') return 'Configuração';
+    if (!isContaAlert) return tipo;
+    if (tipo === 'URGENCIA') return 'Problema / Pendência';
+    if (tipo === 'PREVENTIVO') return isAdmin ? 'Configuração' : 'Aviso de Conta';
     return tipo;
   };
 
@@ -81,12 +83,16 @@ export function NotificacoesPage() {
           <h2>
             {isAdmin
               ? 'Notificações de Configuração e Problemas do Sistema'
-              : 'Central de Notificações e Alertas'}
+              : isAdminEmpresa
+                ? 'Alertas da Conta Principal da Empresa'
+                : 'Central de Notificações e Alertas'}
           </h2>
           <p className="page-subtitle">
             {isAdmin
-              ? 'Acompanhe alertas sobre configurações globais, integrações (SMTP/IA) e possíveis problemas nas contas ou envios.'
-              : 'Acompanhe alertas preventivos e de urgência sobre vencimentos de exames, documentos e fila de assinaturas.'}
+              ? 'Acompanhe alertas sobre configurações globais, integrações (SMTP/IA) e possíveis problemas com empresas ou envios. Dados operacionais de SST e usuários internos pertencem exclusivamente às empresas.'
+              : isAdminEmpresa
+                ? 'Acompanhe pendências de criação dos usuários operacionais (RH, Médico do Trabalho e Especialista SST), primeiros acessos e falhas de e-mail da sua empresa.'
+                : 'Acompanhe alertas preventivos e de urgência sobre vencimentos de exames, documentos e fila de assinaturas.'}
           </p>
         </div>
         <button type="button" className="btn btn-secondary" onClick={handleMarkAllRead}>
@@ -100,11 +106,19 @@ export function NotificacoesPage() {
         ) : notificacoes.length === 0 ? (
           <EmptyState
             icon={Bell}
-            title={isAdmin ? 'Nenhum problema de configuração' : 'Nenhuma notificação registrada'}
+            title={
+              isAdmin
+                ? 'Nenhum problema de configuração'
+                : isAdminEmpresa
+                  ? 'Nenhuma pendência nas contas da empresa'
+                  : 'Nenhuma notificação registrada'
+            }
             description={
               isAdmin
-                ? 'As configurações globais, contas e envios do sistema não apresentam pendências críticas no momento.'
-                : 'Quando houver novos alertas de vencimento ou atualizações de fluxo, eles aparecerão aqui.'
+                ? 'As configurações globais, integrações e contas principais das empresas não apresentam pendências críticas no momento.'
+                : isAdminEmpresa
+                  ? 'Todos os perfis operacionais (RH, Médico do Trabalho e Especialista SST) estão ativos e sem falhas de acesso.'
+                  : 'Quando houver novos alertas de vencimento ou atualizações de fluxo, eles aparecerão aqui.'
             }
           />
         ) : (

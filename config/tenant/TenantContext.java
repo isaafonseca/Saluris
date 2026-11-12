@@ -33,6 +33,18 @@ public final class TenantContext {
         return usuarioAtual().map(UsuarioPrincipal::isAdministrador).orElse(false);
     }
 
+    public static boolean isAdminEmpresa() {
+        return usuarioAtual().map(UsuarioPrincipal::isAdminEmpresa).orElse(false);
+    }
+
+    public static Long exigirEmpresaId() {
+        UsuarioPrincipal usuario = exigirUsuario();
+        if (usuario.isAdministrador() || usuario.getEmpresaId() == null) {
+            throw new RegraNegocioException("Esta operação exige usuário vinculado a uma empresa.");
+        }
+        return usuario.getEmpresaId();
+    }
+
     /**
      * Resolve a empresa em que a operação deve ocorrer.
      * <ul>

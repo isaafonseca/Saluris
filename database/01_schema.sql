@@ -144,8 +144,10 @@ CREATE TABLE unidades (
 -- -----------------------------------------------------------------------------
 -- 3. USUARIOS (RBAC) - Quadro 01 / RF01
 --    ADMINISTRADOR (T.I. da plataforma): sem empresa (empresa_id NULL).
---    ESPECIALISTA_SST, MEDICO_TRABALHO, RH_EMPRESA: sempre vinculados a uma
---      empresa, que delimita todo o acesso a dados.
+--    ADMIN_EMPRESA (Conta Principal da Empresa): gerencia exclusivamente os
+--      usuários operacionais vinculados à própria empresa.
+--    ESPECIALISTA_SST, MEDICO_TRABALHO, RH_EMPRESA: vinculados a uma empresa,
+--      com acesso aos dados operacionais e de SST da empresa.
 --    MEDICO_TRABALHO: obrigatoriamente com CRM + UF (usado na assinatura).
 -- -----------------------------------------------------------------------------
 CREATE TABLE usuarios (
@@ -167,7 +169,7 @@ CREATE TABLE usuarios (
     -- Permite FKs compostas (usuário sempre da mesma empresa do registro)
     CONSTRAINT uk_usuarios_id_empresa UNIQUE (id, empresa_id),
     CONSTRAINT ck_usuarios_perfil CHECK (perfil IN
-        ('ADMINISTRADOR', 'ESPECIALISTA_SST', 'MEDICO_TRABALHO', 'RH_EMPRESA')),
+        ('ADMINISTRADOR', 'ADMIN_EMPRESA', 'ESPECIALISTA_SST', 'MEDICO_TRABALHO', 'RH_EMPRESA')),
     CONSTRAINT ck_usuarios_email CHECK (email ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$'),
     CONSTRAINT ck_usuarios_empresa_perfil CHECK (
         (perfil = 'ADMINISTRADOR' AND empresa_id IS NULL)

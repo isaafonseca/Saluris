@@ -63,7 +63,10 @@ public class NotificacaoService {
     public PageResponse<NotificacaoResponse> listarMinhas(Pageable pageable) {
         Long usuarioId = TenantContext.exigirUsuario().getId();
         if (TenantContext.isAdministrador()) {
-            return adminSistemaNotificacaoService.listar(usuarioId, pageable);
+            return adminSistemaNotificacaoService.listarParaAdminGlobal(usuarioId, pageable);
+        }
+        if (TenantContext.isAdminEmpresa()) {
+            return adminSistemaNotificacaoService.listarParaEmpresaAdmin(TenantContext.exigirEmpresaId(), usuarioId, pageable);
         }
         Page<Notificacao> page = notificacaoRepository.findByUsuarioIdOrderByCriadoEmDesc(usuarioId, pageable);
         return PageResponse.de(page, NotificacaoService::paraResposta);
@@ -73,7 +76,10 @@ public class NotificacaoService {
     public long contarNaoLidas() {
         Long usuarioId = TenantContext.exigirUsuario().getId();
         if (TenantContext.isAdministrador()) {
-            return adminSistemaNotificacaoService.contarNaoLidas(usuarioId);
+            return adminSistemaNotificacaoService.contarNaoLidasAdminGlobal(usuarioId);
+        }
+        if (TenantContext.isAdminEmpresa()) {
+            return adminSistemaNotificacaoService.contarNaoLidasEmpresaAdmin(TenantContext.exigirEmpresaId(), usuarioId);
         }
         return notificacaoRepository.countByUsuarioIdAndLidaFalse(usuarioId);
     }
@@ -82,7 +88,11 @@ public class NotificacaoService {
     public void marcarComoLida(Long id) {
         Long usuarioId = TenantContext.exigirUsuario().getId();
         if (TenantContext.isAdministrador()) {
-            adminSistemaNotificacaoService.marcarComoLida(usuarioId, id);
+            adminSistemaNotificacaoService.marcarComoLidaAdminGlobal(usuarioId, id);
+            return;
+        }
+        if (TenantContext.isAdminEmpresa()) {
+            adminSistemaNotificacaoService.marcarComoLidaEmpresaAdmin(TenantContext.exigirEmpresaId(), usuarioId, id);
             return;
         }
         Notificacao notif = notificacaoRepository.findByIdAndUsuarioId(id, usuarioId)
@@ -94,7 +104,11 @@ public class NotificacaoService {
     public void marcarTodasComoLidas() {
         Long usuarioId = TenantContext.exigirUsuario().getId();
         if (TenantContext.isAdministrador()) {
-            adminSistemaNotificacaoService.marcarTodasComoLidas(usuarioId);
+            adminSistemaNotificacaoService.marcarTodasComoLidasAdminGlobal(usuarioId);
+            return;
+        }
+        if (TenantContext.isAdminEmpresa()) {
+            adminSistemaNotificacaoService.marcarTodasComoLidasEmpresaAdmin(TenantContext.exigirEmpresaId(), usuarioId);
             return;
         }
         notificacaoRepository.marcarTodasComoLidas(usuarioId, OffsetDateTime.now());
